@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amour House · El catio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div class="brand">
+  <h1>Amour <span>♥</span> House</h1>
+  <p>El catio más feliz del barrio</p>
+</div>
+
+<div class="hint" id="hint">Toca un gato para conocerlo. Abajo tienes juguetes para jugar con ellos 🐾</div>
+
+<!-- Ficha del gato: panel sobre la escena -->
+<div class="panel-fondo" id="card" hidden>
+  <div class="panel" role="dialog" aria-labelledby="cName">
+    <button class="close" id="cardClose" aria-label="Cerrar">×</button>
+    <div class="panel-foto">
+      <img id="cFoto" alt="">
+      <canvas id="portrait"></canvas>
+    </div>
+    <h2 id="cName"></h2>
+    <div id="paso1">
+      <p class="desc" id="cDesc"></p>
+      <div class="tags" id="cTags"></div>
+      <div class="state">Ahora mismo: <b id="cState"></b></div>
+    </div>
+    <div id="paso2" hidden>
+      <p class="edad-etq">Edad</p>
+      <p class="edad" id="cEdad"></p>
+    </div>
+    <button class="accion" id="cardAccion">Siguiente →</button>
+  </div>
+</div>
+
+<div class="toolbar" id="toolbar">
+  <button data-tool="info" class="active"><span class="ico">🔍</span><span class="lbl">Conocer</span></button>
+  <button data-tool="pet"><span class="ico">✋</span><span class="lbl">Acariciar</span></button>
+  <button data-tool="laser"><span class="ico">🔴</span><span class="lbl">Láser</span></button>
+  <button data-tool="treat"><span class="ico">🐟</span><span class="lbl">Premio</span></button>
+  <button data-tool="ball"><span class="ico">🧶</span><span class="lbl">Pelota</span></button>
+</div>
+
+<!-- El orden importa: cada archivo usa cosas de los anteriores -->
+<script src="js/utilidades.js"></script>
+<script src="js/gatos-datos.js"></script>
+<script src="js/partes-gatos.js"></script>
+<script src="js/animaciones.js"></script>
+<script src="js/rig.js"></script>
+<script src="js/escenario.js"></script>
+<script src="js/objetos.js"></script>
+<script src="js/dibujo-gatos.js"></script>
+<script src="js/dibujo-partes.js"></script>
+<script src="js/cerebro-gatos.js"></script>
+<script src="js/interaccion.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

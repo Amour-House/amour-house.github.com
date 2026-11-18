@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amour House · Editor de animaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#2b211e; --paper:#fbf1de; --paper2:#fff8ea; --gold:#ffd56b; --red:#e8616b; --bg:#e9d3ae; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Fredoka',system-ui,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden;-webkit-user-select:none;user-select:none}
+  body{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+  button,select,input{font-family:inherit;font-size:14px;color:var(--ink)}
+  button{background:var(--paper2);border:2.5px solid var(--ink);border-radius:10px;padding:5px 10px;cursor:pointer;font-weight:600;white-space:nowrap}
+  button:hover{background:#fff}
+  button:active{transform:translateY(1px)}
+  button.prim{background:var(--gold)}
+  select,input[type=number]{background:var(--paper2);border:2px solid var(--ink);border-radius:8px;padding:3px 6px}
+
+  header{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--paper);border-bottom:3px solid var(--ink);flex-wrap:wrap}
+  header h1{font-size:19px;margin-right:6px}
+  header h1 span{color:var(--red)}
+  header label{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+  #estado{font-size:13px;font-weight:600;padding:3px 8px;border-radius:8px;border:2px solid var(--ink);background:#fff}
+  #estado.sucio{background:#ffe0e0}
+  #estado.ok{background:#dff5d8}
+  .grow{flex:1}
+
+  main{display:grid;grid-template-columns:1fr 300px;min-height:0}
+  #vista{position:relative;min-height:0;overflow:hidden}
+  #cv{display:block;width:100%;height:100%;cursor:grab}
+  #cv.arrastrando{cursor:grabbing}
+  #info{position:absolute;left:12px;top:10px;background:rgba(255,248,234,.92);border:2px solid var(--ink);border-radius:10px;padding:6px 10px;font-size:13px;line-height:1.35;max-width:360px;pointer-events:none}
+  #info b{font-weight:700}
+
+  aside{background:var(--paper);border-left:3px solid var(--ink);overflow:auto;padding:10px 12px}
+  aside section{margin-bottom:14px}
+  aside h3{font-size:15px;margin-bottom:6px}
+  #listaPiezas{display:flex;flex-wrap:wrap;gap:5px}
+  #listaPiezas button{font-size:12.5px;padding:3px 8px;border-width:2px}
+  #listaPiezas button.sel{background:var(--gold)}
+  .fila{display:grid;grid-template-columns:58px 1fr 62px;align-items:center;gap:6px;margin:5px 0;font-size:13px;font-weight:600}
+  .fila input[type=range]{width:100%;accent-color:#e8616b}
+  .fila input[type=number]{width:62px;padding:2px 4px}
+  .fila.oculta{display:none}
+  .nota{font-size:12px;opacity:.75;line-height:1.3;margin-top:4px}
+  .chk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin:4px 0}
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .dos label{font-size:13px;font-weight:600;display:flex;flex-direction:column;gap:3px}
+
+  footer{background:var(--paper);border-top:3px solid var(--ink);padding:8px 12px 10px}
+  .barra{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+  .barra .sep{width:2px;height:24px;background:var(--ink);opacity:.2;margin:0 4px}
+  #tiempo{font-weight:700;font-size:14px;min-width:150px}
+  #tl{display:block;width:100%;height:236px;background:var(--paper2);border:2.5px solid var(--ink);border-radius:10px;cursor:pointer}
+
+  #ayuda{position:fixed;inset:0;background:rgba(43,33,30,.45);display:flex;align-items:center;justify-content:center;z-index:10}
+  #ayuda[hidden]{display:none}
+  #ayuda .caja{background:var(--paper);border:3px solid var(--ink);border-radius:16px;box-shadow:5px 5px 0 var(--ink);padding:18px 22px;max-width:640px;max-height:85vh;overflow:auto;font-size:14.5px;line-height:1.45}
+  #ayuda h2{margin-bottom:8px}
+  #ayuda h4{margin:12px 0 4px}
+  #ayuda kbd{background:#fff;border:1.5px solid var(--ink);border-radius:5px;padding:0 5px;font-size:12.5px}
+  #ayuda ul{padding-left:20px}
+  #toast{position:fixed;left:50%;bottom:130px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:11}
+  #toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Editor de animaciones <span>♥</span></h1>
+  <label>Gato <select id="selGato"></select></label>
+  <label>Animación <select id="selAnim"></select></label>
+  <span class="grow"></span>
+  <span id="estado">✓ Sin cambios</span>
+  <button id="btnGuardar" class="prim" title="Guarda js/animaciones.js (lo que usa el catio)">💾 Guardar archivo</button>
+  <button id="btnCopiar" title="Copia el contenido de animaciones.js">📋 Copiar código</button>
+  <button id="btnDescartar" title="Borra el borrador y vuelve a lo que dice js/animaciones.js">↺ Descartar borrador</button>
+  <button id="btnCatio" title="Abre el catio en otra pestaña (usa el borrador en vivo)">🐾 Ver en el catio</button>
+  <button id="btnAyuda">❓ Ayuda</button>
+</header>
+
+<main>
+  <div id="vista">
+    <canvas id="cv"></canvas>
+    <div id="info"></div>
+  </div>
+  <aside>
+    <section>
+      <h3>Pieza</h3>
+      <div id="listaPiezas"></div>
+      <p class="nota">También puedes hacer clic sobre la pieza en el dibujo.</p>
+    </section>
+    <section>
+      <h3 id="tituloPieza">Torso</h3>
+      <div class="fila" id="fRot"><span>Giro °</span><input type="range" id="rRot" min="-180" max="180" step="0.5"><input type="number" id="nRot" step="0.5"></div>
+      <div class="fila" id="fX"><span>Mover X</span><input type="range" id="rX" min="-40" max="40" step="0.1"><input type="number" id="nX" step="0.1"></div>
+      <div class="fila" id="fY"><span>Mover Y</span><input type="range" id="rY" min="-40" max="40" step="0.1"><input type="number" id="nY" step="0.1"></div>
+      <div class="fila" id="fEsc"><span>Largo</span><input type="range" id="rEsc" min="0.4" max="1.6" step="0.01"><input type="number" id="nEsc" step="0.01"></div>
+      <button id="btnResetPieza">↺ Pieza a su posición original</button>
+      <p class="nota" id="notaClave"></p>
+    </section>
+    <section>
+      <h3>Cara en esta clave</h3>
+      <div class="dos">
+        <label>Ojos <select id="selOjos"><option value="abiertos">Abiertos</option><option value="cerrados">Cerrados</option></select></label>
+        <label>Boca <select id="selBoca"><option value="cerrada">Cerrada</option><option value="abierta">Abierta</option></select></label>
+      </div>
+    </section>
+    <section>
+      <h3>Animación</h3>
+      <div class="dos">
+        <label>Duración (s) <input type="number" id="nDur" min="0.1" max="20" step="0.05"></label>
+        <label>&nbsp;<span class="chk"><input type="checkbox" id="chkLoop"> Se repite</span></label>
+      </div>
+      <p class="nota">Al cambiar la duración, las claves se estiran o encogen junto con ella.</p>
+    </section>
+    <section>
+      <h3>Ver</h3>
+      <label class="chk"><input type="checkbox" id="chkCebolla" checked> Papel cebolla (clave anterior y siguiente)</label>
+      <label class="chk"><input type="checkbox" id="chkPuntos" checked> Puntos de unión</label>
+      <label class="chk"><input type="checkbox" id="chkVoltear"> Mirar a la izquierda</label>
+      <div class="dos" style="margin-top:6px">
+        <label>Velocidad <select id="selVel"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+        <label>Zoom <input type="range" id="rZoom" min="1" max="12" step="0.1"></label>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<footer>
+  <div class="barra">
+    <button id="btnInicio" title="Ir al inicio">⏮</button>
+    <button id="btnAnt" title="Clave anterior (←)">◀</button>
+    <button id="btnPlay" class="prim" title="Reproducir / pausar (Espacio)">▶ Reproducir</button>
+    <button id="btnSig" title="Clave siguiente (→)">▶</button>
+    <span id="tiempo">0.00 s</span>
+    <span class="sep"></span>
+    <button id="btnClave" title="Agregar clave a la pieza elegida (K)">➕ Clave</button>
+    <button id="btnClaveTodo" title="Agregar clave a todas las piezas (Shift+K)">➕ Clave en todo</button>
+    <button id="btnCopiarPose" title="Copiar la pose actual (C)">📄 Copiar pose</button>
+    <button id="btnPegarPose" title="Pegar la pose copiada aquí (V)">📋 Pegar pose</button>
+    <button id="btnBorrarClave" title="Borrar la clave de la pieza elegida aquí (Supr)">🗑 Borrar clave</button>
+    <span class="sep"></span>
+    <button id="btnDeshacer" title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
+    <button id="btnRehacer" title="Rehacer (Ctrl+Y)">↷ Rehacer</button>
+  </div>
+  <canvas id="tl"></canvas>
+</footer>
+
+<div id="ayuda" hidden>
+  <div class="caja">
+    <h2>Cómo animar</h2>
+    <p>Cada animación es una lista de <b>poses clave</b> en el tiempo (los rombos de abajo). Entre una clave y otra, el movimiento se calcula solo.</p>
+    <h4>Mover las piezas</h4>
+    <ul>
+      <li><b>Clic y arrastrar</b> una pieza: la <b>gira</b> desde su punto de unión (punto rojo).</li>
+      <li><b>Torso:</b> arrastrar lo <b>mueve</b> (solo el torso); con <kbd>Shift</kbd> lo gira.</li>
+      <li><b>Gato completo:</b> la <b>mira</b> en el suelo bajo el gato. Arrastrarla mueve <b>todo</b> el gato; con <kbd>Shift</kbd> lo gira entero. En el catio no se ve.</li>
+      <li><b>Cabeza:</b> arrastrar la gira; con <kbd>Shift</kbd> la mueve.</li>
+      <li><b>Patas:</b> arrastrar las gira; con <kbd>Shift</kbd> las estira o encoge.</li>
+      <li>También puedes usar los controles de la derecha para valores exactos.</li>
+    </ul>
+    <h4>Claves y tiempo</h4>
+    <ul>
+      <li>Cada pieza tiene <b>su propia fila</b> de claves. Al mover una pieza solo se crea o cambia la clave <b>de esa pieza</b>.</li>
+      <li>Clic en el nombre de una fila para elegir esa pieza; clic dentro de la fila para ir a ese momento.</li>
+      <li><b>Arrastra un rombo</b> para cambiar cuándo pasa esa clave (solo esa pieza).</li>
+      <li>La fila <b>Todo</b> junta las claves de todas las piezas: arrastrar uno de sus rombos mueve todas las claves de ese momento, y <b>➕ Clave en todo</b> crea una clave en cada pieza.</li>
+      <li>Para que una animación que se repite quede pareja, la primera y la última clave deben ser parecidas: usa <b>Copiar pose</b> y <b>Pegar pose</b> (pegar pone claves en todas las piezas).</li>
+      <li>Atajos: <kbd>Espacio</kbd> reproducir, <kbd>←</kbd>/<kbd>→</kbd> clave anterior/siguiente de la fila elegida, <kbd>K</kbd> clave en la pieza, <kbd>Shift+K</kbd> clave en todo, <kbd>C</kbd>/<kbd>V</kbd> copiar/pegar pose, <kbd>Supr</kbd> borrar clave, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> deshacer/rehacer, <kbd>Ctrl+S</kbd> guardar.</li>
+    </ul>
+    <h4>Guardar</h4>
+    <ul>
+      <li>Todo lo que haces se guarda solo como <b>borrador</b> en este computador. Si tienes el catio abierto en otra pestaña, se actualiza <b>en vivo</b>.</li>
+      <li><b>💾 Guardar archivo</b> escribe <code>js/animaciones.js</code>. La primera vez te pide dónde: elige la carpeta <b>AmourHouse → js → animaciones.js</b> y reemplázalo. Ese archivo es el que se sube con la página.</li>
+      <li>Si tu navegador no permite elegir dónde guardar, se descarga el archivo: muévelo a <code>AmourHouse/js/</code> reemplazando el anterior.</li>
+      <li><b>↺ Descartar borrador</b> vuelve a lo que dice el archivo.</li>
+    </ul>
+    <h4>Qué animación usa el gato en el catio</h4>
+    <p>Caminar al pasear, Correr al perseguir o jugar, Comer en los platos, Dormir y Echado en sus siestas, Sentado al descansar, Feliz cuando lo acarician, Maullar al hablar, Agacharse antes de saltar, Saltar en el aire, Brinco al asustarse, Manotazo con la pelota, Estirarse y Acicalarse de vez en cuando.</p>
+    <p style="margin-top:12px;text-align:right"><button id="btnCerrarAyuda" class="prim">Entendido</button></p>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="js/partes-gatos.js"></script>
+<script src="js/animaciones.js"></script>
+<script src="js/rig.js"></script>
+<script>
+'use strict';
+/* =========================================================
+   EDITOR DE ANIMACIONES
+   Usa las mismas piezas (js/partes-gatos.js) y el mismo dibujo
+   (js/rig.js) que el catio, así que lo que ves aquí es lo que
+   se ve en el juego. Cada pieza tiene su propia pista de claves.
+   ========================================================= */
+const CLAVE_BORRADOR = 'amourhouse_animaciones_borrador';
+const $ = id => document.getElementById(id);
+const clonar = o => JSON.parse(JSON.stringify(o));
+const r1 = v => Math.round(v*10)/10, r2 = v => Math.round(v*100)/100;
+const ORDEN_CLIC = ['cabeza','orejaB','orejaA','pataDC','pataTC','cuerpo','pataTL','pataDL','cola'];
+const FILAS = [['todo','Todo']].concat(PIEZAS_ANIM, [['ojos','Ojos'], ['boca','Boca']]);
+const NOMBRE = Object.fromEntries(FILAS);
+const EPS = .004;
+
+/* ---------- estado ---------- */
+let A = null, desdeBorrador = false;
+try{ const txt = localStorage.getItem(CLAVE_BORRADOR); if(txt){ A = JSON.parse(txt); desdeBorrador = true; } }catch(e){}
+if(!A) A = clonar(typeof ANIMACIONES !== 'undefined' ? ANIMACIONES : {});
+function prepararDatos(){
+  normalizarTodas(A);
+  for(const [k] of ANIM_INFO){
+    if(!A[k]) A[k] = { duracion:1, loop:true, pistas:{} };
+    for(const p of PISTAS) if(!A[k].pistas[p]) A[k].pistas[p] = [];
+  }
+}
+prepararDatos();
+
+let cur = 'quieto', t = 0, playing = false, sel = 'cuerpo', vel = 1, zoom = 4;
+let cebolla = true, puntos = true, voltear = false;
+let sp = null, ultimo = null;
+let undoPila = [], redoPila = [], poseCopiada = null, sucio = false;
+
+const anim = () => A[cur];
+const pista = k => anim().pistas[k];
+const cv = $('cv'), g = cv.getContext('2d'), tl = $('tl'), gt = tl.getContext('2d');
+let DPR = 1, VW = 0, VH = 0, TW = 0, TH = 0;
+
+/* ---------- claves ---------- */
+const pistasDe = k => k === 'todo' ? PISTAS : [k];
+function claveEn(k, tt){ const ks = pista(k); for(let i=0;i<ks.length;i++) if(Math.abs(ks[i].t - tt) < EPS) return i; return -1; }
+function hayClaveEn(fila, tt){ return pistasDe(fila).some(k => claveEn(k, tt) >= 0); }
+function tiemposDe(fila){
+  const out = [];
+  for(const k of pistasDe(fila)) for(const c of pista(k)) if(!out.some(x => Math.abs(x - c.t) < EPS)) out.push(c.t);
+  return out.sort((a,b) => a - b);
+}
+function poseAhora(){ return muestrear(anim(), t); }
+function valorAhora(k){ const p = poseAhora()[k]; return typeof p === 'object' ? Object.assign({}, p) : p; }
+function ordenar(k){ pista(k).sort((a,b) => a.t - b.t); }
+// Devuelve la clave de la pieza k en el tiempo actual (la crea si no existe)
+function asegurarClave(k){
+  let i = claveEn(k, t);
+  if(i < 0){ const c = { t:r2(t), v:valorAhora(k) }; pista(k).push(c); ordenar(k); i = pista(k).indexOf(c); }
+  return pista(k)[i];
+}
+function guardarDeshacer(){ undoPila.push(JSON.stringify(A)); if(undoPila.length > 100) undoPila.shift(); redoPila = []; }
+function deshacer(){ if(!undoPila.length) return; redoPila.push(JSON.stringify(A)); A = JSON.parse(undoPila.pop()); cambio(); aviso('Deshecho'); }
+function rehacer(){ if(!redoPila.length) return; undoPila.push(JSON.stringify(A)); A = JSON.parse(redoPila.pop()); cambio(); aviso('Rehecho'); }
+
+function cambio(){
+  sucio = true;
+  try{ localStorage.setItem(CLAVE_BORRADOR, JSON.stringify(A)); }catch(e){}
+  if(t > anim().duracion) t = anim().duracion;
+  actualizarPanel();
+}
+function estado(){
+  const e = $('estado');
+  if(sucio){ e.textContent = '● Cambios sin guardar en el archivo'; e.className = 'sucio'; }
+  else if(desdeBorrador){ e.textContent = '✏️ Borrador cargado (sin guardar en el archivo)'; e.className = 'sucio'; }
+  else { e.textContent = '✓ Igual al archivo'; e.className = 'ok'; }
+}
+let toastT = 0;
+function aviso(txt){ const el = $('toast'); el.textContent = txt; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 1600); }
+
+/* ---------- panel ---------- */
+function llenarSelects(){
+  const sg = $('selGato'); sg.innerHTML = '';
+  for(const n of Object.keys(PIEZAS_GATOS)) sg.add(new Option(n, n));
+  const sa = $('selAnim'); sa.innerHTML = '';
+  for(const [k, nom] of ANIM_INFO) sa.add(new Option(nom, k));
+  sa.value = cur;
+  const lp = $('listaPiezas'); lp.innerHTML = '';
+  for(const [k, nom] of PIEZAS_ANIM){ const b = document.createElement('button'); b.textContent = nom; b.dataset.k = k; b.onclick = () => { sel = k; actualizarPanel(); }; lp.appendChild(b); }
+}
+const esPieza = k => PIEZAS_ANIM.some(p => p[0] === k);
+function actualizarPanel(){
+  document.querySelectorAll('#listaPiezas button').forEach(b => b.classList.toggle('sel', b.dataset.k === sel));
+  $('tituloPieza').textContent = NOMBRE[sel];
+  const pieza = esPieza(sel);
+  const tieneXY = ['raiz','cuerpo','cabeza'].includes(sel), esPata = sel.startsWith('pata');
+  $('fRot').classList.toggle('oculta', !pieza);
+  $('fX').classList.toggle('oculta', !tieneXY); $('fY').classList.toggle('oculta', !tieneXY); $('fEsc').classList.toggle('oculta', !esPata);
+  $('btnResetPieza').style.display = pieza ? '' : 'none';
+  const p = poseAhora();
+  const pon = (r, n, val) => { if(document.activeElement !== $(n)) $(n).value = val; $(r).value = val; };
+  if(pieza){
+    const v = p[sel];
+    pon('rRot', 'nRot', r1(v.rot));
+    if(tieneXY){ pon('rX', 'nX', r1(v.x)); pon('rY', 'nY', r1(v.y)); }
+    if(esPata) pon('rEsc', 'nEsc', r2(v.esc));
+  }
+  $('selOjos').value = p.ojos; $('selBoca').value = p.boca;
+  if(document.activeElement !== $('nDur')) $('nDur').value = anim().duracion;
+  $('chkLoop').checked = !!anim().loop;
+  const enClave = hayClaveEn(sel, t);
+  $('notaClave').textContent = sel === 'todo'
+    ? 'Fila "Todo": elige una pieza para moverla. Aquí puedes crear o borrar claves de todas las piezas a la vez.'
+    : enClave ? `Hay una clave de ${NOMBRE[sel]} aquí: los cambios se guardan en ella.`
+              : `No hay clave de ${NOMBRE[sel]} aquí: al cambiarla se crea una (solo para esta pieza).`;
+  $('btnBorrarClave').disabled = !enClave;
+  $('btnPlay').textContent = playing ? '⏸ Pausa' : '▶ Reproducir';
+  estado();
+}
+function cambiarValor(campo, val){
+  if(!esPieza(sel)) return;
+  guardarDeshacer();
+  const c = asegurarClave(sel);
+  c.v = Object.assign({}, poseBase()[sel], c.v); c.v[campo] = val;
+  cambio();
+}
+function enlazar(r, n, campo, redondeo){
+  const f = el => { const v = parseFloat(el.value); if(!isNaN(v)) cambiarValor(campo, redondeo(v)); };
+  $(r).addEventListener('input', e => f(e.target));
+  $(n).addEventListener('change', e => f(e.target));
+}
+enlazar('rRot', 'nRot', 'rot', r1); enlazar('rX', 'nX', 'x', r1); enlazar('rY', 'nY', 'y', r1); enlazar('rEsc', 'nEsc', 'esc', r2);
+$('btnResetPieza').onclick = () => { if(!esPieza(sel)) return; guardarDeshacer(); asegurarClave(sel).v = clonar(poseBase()[sel]); cambio(); };
+const cara = (k, val) => { guardarDeshacer(); asegurarClave(k).v = val; cambio(); };
+$('selOjos').onchange = e => cara('ojos', e.target.value);
+$('selBoca').onchange = e => cara('boca', e.target.value);
+$('nDur').onchange = e => {
+  const nd = Math.max(.1, parseFloat(e.target.value) || 1), f = nd/anim().duracion;
+  guardarDeshacer();
+  for(const k of PISTAS) pista(k).forEach(c => c.t = r2(c.t*f));
+  anim().duracion = r2(nd); t *= f; cambio();
+};
+$('chkLoop').onchange = e => { guardarDeshacer(); anim().loop = e.target.checked; cambio(); };
+$('selAnim').onchange = e => { cur = e.target.value; t = 0; playing = false; actualizarPanel(); };
+$('selGato').onchange = e => cargarGato(e.target.value);
+$('chkCebolla').onchange = e => cebolla = e.target.checked;
+$('chkPuntos').onchange = e => puntos = e.target.checked;
+$('chkVoltear').onchange = e => voltear = e.target.checked;
+$('selVel').onchange = e => vel = parseFloat(e.target.value);
+$('rZoom').oninput = e => zoom = parseFloat(e.target.value);
+
+/* ---------- reproducción y botones de claves ---------- */
+function irA(tt){ t = Math.max(0, Math.min(anim().duracion, tt)); actualizarPanel(); }
+$('btnPlay').onclick = () => { playing = !playing; if(playing && !anim().loop && t >= anim().duracion) t = 0; actualizarPanel(); };
+$('btnInicio').onclick = () => { playing = false; irA(0); };
+function claveVecina(dir){
+  playing = false;
+  const ts = tiemposDe(sel); if(!ts.length) return;
+  if(dir > 0){ const x = ts.find(x => x > t + EPS); irA(x !== undefined ? x : ts[0]); }
+  else { const x = [...ts].reverse().find(x => x < t - EPS); irA(x !== undefined ? x : ts[ts.length-1]); }
+}
+$('btnAnt').onclick = () => claveVecina(-1);
+$('btnSig').onclick = () => claveVecina(1);
+function agregarClave(fila){
+  const ks = pistasDe(fila).filter(k => claveEn(k, t) < 0);
+  if(!ks.length){ aviso('Ya hay clave aquí'); return; }
+  guardarDeshacer(); ks.forEach(asegurarClave); cambio();
+  aviso(fila === 'todo' ? 'Clave agregada en todas las piezas' : 'Clave agregada: ' + NOMBRE[fila]);
+}
+$('btnClave').onclick = () => agregarClave(sel);
+$('btnClaveTodo').onclick = () => agregarClave('todo');
+$('btnCopiarPose').onclick = () => { poseCopiada = clonar(poseAhora()); aviso('Pose copiada'); };
+$('btnPegarPose').onclick = () => {
+  if(!poseCopiada){ aviso('Primero copia una pose'); return; }
+  guardarDeshacer();
+  for(const k of PISTAS) asegurarClave(k).v = clonar(poseCopiada[k]);
+  cambio(); aviso('Pose pegada en todas las piezas');
+};
+$('btnBorrarClave').onclick = borrarClave;
+function borrarClave(){
+  const ks = pistasDe(sel).filter(k => claveEn(k, t) >= 0);
+  if(!ks.length) return;
+  guardarDeshacer(); ks.forEach(k => pista(k).splice(claveEn(k, t), 1)); cambio();
+  aviso(sel === 'todo' ? 'Claves borradas en todas las piezas' : 'Clave borrada: ' + NOMBRE[sel]);
+}
+$('btnDeshacer').onclick = deshacer; $('btnRehacer').onclick = rehacer;
+
+/* ---------- guardar ---------- */
+function textoArchivo(){
+  const L = ["'use strict';", '/* =========================================================', '   ANIMACIONES DE LOS GATOS',
+    '   Este archivo lo genera el editor (editor.html → "Guardar archivo").',
+    '   Cada animación: duracion (segundos), loop (se repite o no) y',
+    '   pistas: una por pieza, con sus claves { t: segundos, v: valor }.',
+    '   Giros en grados. "raiz" es el gato completo.',
+    '   ========================================================= */', 'const ANIMACIONES = {'];
+  const nombres = Object.keys(A);
+  nombres.forEach((n, ni) => {
+    const a = A[n];
+    L.push(`  ${JSON.stringify(n)}: { "duracion": ${a.duracion}, "loop": ${!!a.loop}, "pistas": {`);
+    const ps = PISTAS.filter(k => a.pistas[k] && a.pistas[k].length);
+    ps.forEach((k, i) => L.push(`    ${JSON.stringify(k)}: ${JSON.stringify(a.pistas[k])}${i < ps.length-1 ? ',' : ''}`));
+    L.push(`  }}${ni < nombres.length-1 ? ',' : ''}`);
+  });
+  L.push('};');
+  return L.join('\n') + '\n';
+}
+let archivo = null;
+$('btnGuardar').onclick = async () => {
+  const txt = textoArchivo();
+  if(window.showSaveFilePicker){
+    try{
+      if(!archivo) archivo = await window.showSaveFilePicker({ suggestedName:'animaciones.js', types:[{ description:'JavaScript', accept:{ 'text/javascript':['.js'] } }] });
+      const w = await archivo.createWritable(); await w.write(txt); await w.close();
+      sucio = false; desdeBorrador = false; estado(); aviso('Guardado en ' + archivo.name + ' ✓');
+      return;
+    }catch(e){ if(e.name === 'AbortError') return; archivo = null; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type:'text/javascript' })); a.download = 'animaciones.js'; a.click();
+  sucio = false; desdeBorrador = false; estado();
+  aviso('Descargado: muévelo a AmourHouse/js/ reemplazando el anterior');
+};
+$('btnCopiar').onclick = async () => {
+  try{ await navigator.clipboard.writeText(textoArchivo()); aviso('Código copiado'); }
+  catch(e){ aviso('No se pudo copiar'); }
+};
+$('btnDescartar').onclick = () => {
+  if(!confirm('¿Descartar el borrador y volver a lo que dice js/animaciones.js?\n(Si guardaste el archivo hace poco, recarga la página después.)')) return;
+  localStorage.removeItem(CLAVE_BORRADOR);
+  A = clonar(typeof ANIMACIONES !== 'undefined' ? ANIMACIONES : {}); prepararDatos();
+  undoPila = []; redoPila = []; sucio = false; desdeBorrador = false; t = 0; actualizarPanel(); aviso('Borrador descartado');
+};
+$('btnCatio').onclick = () => window.open('main.html', '_blank');
+$('btnAyuda').onclick = () => $('ayuda').hidden = false;
+$('btnCerrarAyuda').onclick = () => $('ayuda').hidden = true;
+$('ayuda').onclick = e => { if(e.target.id === 'ayuda') $('ayuda').hidden = true; };
+
+/* ---------- vista del gato ---------- */
+function origen(){ return [VW*.5, VH*.74]; }
+function aLocal(mx, my){ const [ox, oy] = origen(); return [(mx - ox)/(zoom*(voltear ? -1 : 1)), (my - oy)/zoom]; }
+
+function dibujarMira(p, activa){
+  const r = 9/zoom;
+  g.save(); g.translate(p[0], p[1]);
+  g.lineWidth = 2/zoom; g.strokeStyle = activa ? '#e8616b' : 'rgba(43,33,30,.55)'; g.fillStyle = activa ? 'rgba(255,213,107,.85)' : 'rgba(255,255,255,.6)';
+  g.beginPath(); g.ellipse(0, 0, r*1.6, r*.7, 0, 0, Math.PI*2); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(-r*2.2, 0); g.lineTo(r*2.2, 0); g.moveTo(0, -r*1.3); g.lineTo(0, r*1.3); g.stroke();
+  g.restore();
+}
+function dibujarVista(){
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.clearRect(0, 0, VW, VH);
+  const [ox, oy] = origen();
+  g.save(); g.translate(ox, oy);
+  g.strokeStyle = 'rgba(43,33,30,.08)'; g.lineWidth = 1;
+  const paso = 10*zoom;
+  for(let x = -Math.ceil(ox/paso)*paso; x < VW - ox; x += paso){ g.beginPath(); g.moveTo(x, -oy); g.lineTo(x, VH - oy); g.stroke(); }
+  for(let y = -Math.ceil(oy/paso)*paso; y < VH - oy; y += paso){ g.beginPath(); g.moveTo(-ox, y); g.lineTo(VW - ox, y); g.stroke(); }
+  g.fillStyle = 'rgba(120,80,40,.18)'; g.fillRect(-ox, 0, VW, VH - oy);
+  g.strokeStyle = '#2b211e'; g.lineWidth = 2; g.beginPath(); g.moveTo(-ox, 0); g.lineTo(VW - ox, 0); g.stroke();
+  g.restore();
+  if(!sp || !sp.ready){ g.fillStyle = '#2b211e'; g.font = '600 16px Fredoka, sans-serif'; g.fillText(sp && sp.failed ? 'No se pudieron cargar las piezas de este gato.' : 'Cargando piezas…', 20, 60); return; }
+
+  g.save(); g.translate(ox, oy); g.scale(zoom*(voltear ? -1 : 1), zoom);
+  if(cebolla && !playing){
+    const ts = tiemposDe(sel === 'todo' || !esPieza(sel) ? 'todo' : sel);
+    const ant = [...ts].reverse().find(x => x < t - EPS), sig = ts.find(x => x > t + EPS);
+    if(ant !== undefined) rigDibujar(g, sp, muestrear(anim(), ant), { alpha:.22 });
+    if(sig !== undefined) rigDibujar(g, sp, muestrear(anim(), sig), { alpha:.22 });
+  }
+  ultimo = rigDibujar(g, sp, poseAhora(), { puntos, radioPunto: 3/zoom*1.2 });
+  dibujarMira(ultimo.piv.raiz, sel === 'raiz');
+  const m = ultimo.M[sel];
+  if(m){
+    g.save(); g.transform(m.m.a, m.m.b, m.m.c, m.m.d, m.m.e, m.m.f);
+    const esc = Math.hypot(m.m.a, m.m.b)*zoom;
+    g.setLineDash([6/esc, 4/esc]); g.strokeStyle = '#e8616b'; g.lineWidth = 2/esc; g.strokeRect(0, 0, m.w, m.h);
+    g.restore();
+    const p = ultimo.piv[sel];
+    if(p){ g.fillStyle = '#ffd56b'; g.strokeStyle = '#2b211e'; g.lineWidth = 1.5/zoom; g.beginPath(); g.arc(p[0], p[1], 5/zoom, 0, Math.PI*2); g.fill(); g.stroke(); }
+  }
+  if(sel === 'raiz'){ const p = ultimo.piv.raizCentro; g.fillStyle = '#ffd56b'; g.strokeStyle = '#2b211e'; g.lineWidth = 1.5/zoom; g.beginPath(); g.arc(p[0], p[1], 5/zoom, 0, Math.PI*2); g.fill(); g.stroke(); }
+  g.restore();
+
+  const ayudaDrag = {
+    raiz:'arrastra la <b>mira</b> para mover <b>todo el gato</b> · Shift + arrastrar para girarlo entero',
+    cuerpo:'arrastra para <b>mover</b> solo el torso · Shift + arrastrar para <b>girar</b>',
+    cabeza:'arrastra para <b>girar</b> · Shift + arrastrar para <b>mover</b>',
+    todo:'elige una pieza haciendo clic sobre ella o en su fila de abajo', ojos:'cambia los ojos en el panel de la derecha', boca:'cambia la boca en el panel de la derecha'
+  };
+  const txt = ayudaDrag[sel] || (sel.startsWith('pata') ? 'arrastra para <b>girar</b> · Shift + arrastrar para <b>estirar</b>' : 'arrastra para <b>girar</b>');
+  $('info').innerHTML = `<b>${NOMBRE[sel]}</b>: ${txt}`;
+}
+
+/* clic y arrastre sobre el gato */
+let drag = null;
+function piezaEn(mx, my){
+  if(!ultimo) return null;
+  const [lx, ly] = aLocal(mx, my);
+  const pr = ultimo.piv.raiz;
+  if(Math.abs(lx - pr[0])*zoom < 20 && Math.abs(ly - pr[1])*zoom < 12) return 'raiz';
+  for(const k of ORDEN_CLIC){
+    const m = ultimo.M[k]; if(!m) continue;
+    const p = m.m.inverse().transformPoint(new DOMPoint(lx, ly));
+    // área de clic ovalada dentro de la imagen (sigue mejor la forma de la pieza)
+    const ex = (p.x - m.w/2)/(m.w/2), ey = (p.y - m.h/2)/(m.h/2);
+    if(ex*ex + ey*ey <= 1) return k;
+  }
+  return null;
+}
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k = piezaEn(mx, my);
+  if(!k) return;
+  sel = k; playing = false;
+  guardarDeshacer();
+  const clave = asegurarClave(k);
+  clave.v = Object.assign({}, poseBase()[k], clave.v);
+  dibujarVista();
+  let modo = 'rot';
+  if(k === 'cuerpo' || k === 'raiz') modo = e.shiftKey ? 'rot' : 'mover';
+  else if(k === 'cabeza') modo = e.shiftKey ? 'mover' : 'rot';
+  else if(k.startsWith('pata') && e.shiftKey) modo = 'esc';
+  const piv = k === 'raiz' ? ultimo.piv.raizCentro : ultimo.piv[k];
+  drag = { modo, k, clave, inicio:aLocal(mx, my), piv:piv.slice(), val:clonar(clave.v), rotRaiz: poseAhora().raiz.rot };
+  cv.setPointerCapture(e.pointerId); cv.classList.add('arrastrando');
+  actualizarPanel();
+});
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  if(!drag){ cv.style.cursor = piezaEn(mx, my) ? 'pointer' : 'default'; return; }
+  const [lx, ly] = aLocal(mx, my), d = drag, v = d.clave.v;
+  if(d.modo === 'mover'){
+    let dx = lx - d.inicio[0], dy = ly - d.inicio[1];
+    if(d.k !== 'raiz' && d.rotRaiz){ const a = -d.rotRaiz*RAD, c = Math.cos(a), s = Math.sin(a); [dx, dy] = [dx*c - dy*s, dx*s + dy*c]; }
+    v.x = r1(d.val.x + dx); v.y = r1(d.val.y + dy);
+  } else if(d.modo === 'rot'){
+    const a0 = Math.atan2(d.inicio[1] - d.piv[1], d.inicio[0] - d.piv[0]), a1 = Math.atan2(ly - d.piv[1], lx - d.piv[0]);
+    let da = (a1 - a0)/RAD; while(da > 180) da -= 360; while(da < -180) da += 360;
+    v.rot = Math.round((d.val.rot + da)*2)/2;
+  } else if(d.modo === 'esc'){
+    const d0 = Math.hypot(d.inicio[0] - d.piv[0], d.inicio[1] - d.piv[1]) || 1, d1 = Math.hypot(lx - d.piv[0], ly - d.piv[1]);
+    v.esc = r2(Math.max(.4, Math.min(1.6, d.val.esc*d1/d0)));
+  }
+  actualizarPanel();
+});
+const soltar = () => { if(!drag) return; drag = null; cv.classList.remove('arrastrando'); cambio(); };
+cv.addEventListener('pointerup', soltar);
+cv.addEventListener('pointercancel', soltar);
+cv.addEventListener('wheel', e => { e.preventDefault(); zoom = Math.max(1, Math.min(12, zoom*(e.deltaY < 0 ? 1.1 : 1/1.1))); $('rZoom').value = zoom; }, { passive:false });
+
+/* ---------- línea de tiempo (una fila por pieza) ---------- */
+const TL_ETQ = 150, TL_DER = 16, TL_REGLA = 24;
+const filaAlto = () => (TH - TL_REGLA - 4)/FILAS.length;
+const filaY = i => TL_REGLA + i*filaAlto() + filaAlto()/2;
+const xDeT = tt => TL_ETQ + tt/anim().duracion*(TW - TL_ETQ - TL_DER);
+const tDeX = x => Math.max(0, Math.min(anim().duracion, (x - TL_ETQ)/(TW - TL_ETQ - TL_DER)*anim().duracion));
+function dibujarTL(){
+  gt.setTransform(DPR, 0, 0, DPR, 0, 0); gt.clearRect(0, 0, TW, TH);
+  const dur = anim().duracion, fh = filaAlto();
+  // filas
+  FILAS.forEach(([k, nom], i) => {
+    const y = TL_REGLA + i*fh;
+    if(k === sel){ gt.fillStyle = 'rgba(255,213,107,.55)'; gt.fillRect(0, y, TW, fh); }
+    else if(i % 2){ gt.fillStyle = 'rgba(43,33,30,.035)'; gt.fillRect(0, y, TW, fh); }
+    gt.fillStyle = '#2b211e'; gt.font = `${k === 'todo' ? 700 : 600} 12px Fredoka, sans-serif`; gt.textAlign = 'left'; gt.textBaseline = 'middle';
+    gt.fillText(nom.replace(' (cerca)', ' ·cerca').replace(' (lejos)', ' ·lejos'), 8, y + fh/2);
+    if(k === 'todo'){ gt.strokeStyle = 'rgba(43,33,30,.3)'; gt.beginPath(); gt.moveTo(0, y + fh); gt.lineTo(TW, y + fh); gt.stroke(); }
+  });
+  gt.strokeStyle = 'rgba(43,33,30,.25)'; gt.beginPath(); gt.moveTo(TL_ETQ - 6, 0); gt.lineTo(TL_ETQ - 6, TH); gt.stroke();
+  // regla
+  const paso = dur > 6 ? 1 : dur > 2.5 ? .5 : dur > 1 ? .25 : .1;
+  gt.font = '600 11px Fredoka, sans-serif'; gt.textAlign = 'center'; gt.textBaseline = 'alphabetic';
+  for(let s = 0; s <= dur + 1e-6; s += paso/5){
+    const x = xDeT(s), mayor = Math.abs(s/paso - Math.round(s/paso)) < 1e-4;
+    gt.strokeStyle = mayor ? 'rgba(43,33,30,.18)' : 'rgba(43,33,30,.07)'; gt.lineWidth = 1;
+    gt.beginPath(); gt.moveTo(x, mayor ? 0 : 4); gt.lineTo(x, TH); gt.stroke();
+    if(mayor){ gt.fillStyle = '#2b211e'; gt.fillText(s.toFixed(paso < .25 ? 1 : 2).replace(/0$/, '') + 's', x, 16); }
+  }
+  // rombos
+  FILAS.forEach(([k], i) => {
+    const y = filaY(i), s = Math.min(7, fh*.42);
+    for(const tt of tiemposDe(k)){
+      const x = xDeT(tt), aqui = Math.abs(tt - t) < EPS;
+      gt.beginPath(); gt.moveTo(x, y - s); gt.lineTo(x + s, y); gt.lineTo(x, y + s); gt.lineTo(x - s, y); gt.closePath();
+      gt.fillStyle = aqui ? '#ffd56b' : k === 'todo' ? '#d9cbb8' : '#fff8ea'; gt.fill();
+      gt.strokeStyle = '#2b211e'; gt.lineWidth = 1.8; gt.stroke();
+    }
+  });
+  if(anim().loop){ gt.fillStyle = 'rgba(43,33,30,.45)'; gt.textAlign = 'right'; gt.font = '600 11px Fredoka, sans-serif'; gt.fillText('↻ se repite', TW - TL_DER, 16); }
+  // cabezal
+  const x = xDeT(t);
+  gt.strokeStyle = '#e8616b'; gt.lineWidth = 2.5; gt.beginPath(); gt.moveTo(x, 0); gt.lineTo(x, TH); gt.stroke();
+  gt.fillStyle = '#e8616b'; gt.beginPath(); gt.moveTo(x - 7, 0); gt.lineTo(x + 7, 0); gt.lineTo(x, 9); gt.closePath(); gt.fill();
+  $('tiempo').textContent = `${t.toFixed(2)} s de ${dur.toFixed(2)} s`;
+}
+let tlDrag = null;
+function filaEn(y){ const i = Math.floor((y - TL_REGLA)/filaAlto()); return i >= 0 && i < FILAS.length ? i : -1; }
+tl.addEventListener('pointerdown', e => {
+  const r = tl.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  playing = false;
+  const i = filaEn(y);
+  if(i >= 0) sel = FILAS[i][0];
+  if(x < TL_ETQ - 6){ actualizarPanel(); return; }     // clic en el nombre: solo elige la fila
+  if(i >= 0){
+    const k = FILAS[i][0];
+    const tt = tiemposDe(k).find(tt => Math.abs(xDeT(tt) - x) < 8);
+    if(tt !== undefined){
+      guardarDeshacer();
+      const claves = pistasDe(k).map(p => pista(p).find(c => Math.abs(c.t - tt) < EPS)).filter(Boolean);
+      tlDrag = { tipo:'clave', claves, t0:tt, movida:false }; t = tt;
+      tl.setPointerCapture(e.pointerId); actualizarPanel(); return;
+    }
+  }
+  tlDrag = { tipo:'tiempo' }; t = tDeX(x);
+  tl.setPointerCapture(e.pointerId); actualizarPanel();
+});
+tl.addEventListener('pointermove', e => {
+  const r = tl.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if(!tlDrag){ tl.style.cursor = x < TL_ETQ - 6 ? 'pointer' : 'col-resize'; return; }
+  if(tlDrag.tipo === 'tiempo') t = tDeX(x);
+  else { const nt = r2(tDeX(x)); tlDrag.claves.forEach(c => c.t = nt); tlDrag.movida = true; t = nt; }
+  actualizarPanel();
+});
+tl.addEventListener('pointerup', () => {
+  if(tlDrag && tlDrag.tipo === 'clave'){
+    if(tlDrag.movida){
+      for(const k of PISTAS){
+        ordenar(k);
+        const ks = pista(k);   // evitar dos claves de la misma pieza en el mismo momento
+        for(let i=1;i<ks.length;i++) if(ks[i].t - ks[i-1].t < .01) ks[i].t = r2(ks[i-1].t + .01);
+      }
+      cambio();
+    } else undoPila.pop();
+  }
+  tlDrag = null;
+});
+
+/* ---------- teclado ---------- */
+window.addEventListener('keydown', e => {
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName) && e.key !== 'Escape') return;
+  if(e.ctrlKey || e.metaKey){
+    if(e.key === 'z' || e.key === 'Z'){ e.preventDefault(); e.shiftKey ? rehacer() : deshacer(); }
+    if(e.key === 'y' || e.key === 'Y'){ e.preventDefault(); rehacer(); }
+    if(e.key === 's' || e.key === 'S'){ e.preventDefault(); $('btnGuardar').click(); }
+    return;
+  }
+  if(e.key === ' '){ e.preventDefault(); $('btnPlay').click(); }
+  else if(e.key === 'ArrowLeft') claveVecina(-1);
+  else if(e.key === 'ArrowRight') claveVecina(1);
+  else if(e.key === 'k' || e.key === 'K') agregarClave(e.shiftKey ? 'todo' : sel);
+  else if(e.key === 'c' || e.key === 'C') $('btnCopiarPose').click();
+  else if(e.key === 'v' || e.key === 'V') $('btnPegarPose').click();
+  else if(e.key === 'Delete' || e.key === 'Backspace') borrarClave();
+  else if(e.key === 'Escape') $('ayuda').hidden = true;
+});
+
+/* ---------- arranque ---------- */
+function medir(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const rv = $('vista').getBoundingClientRect(); VW = rv.width; VH = rv.height;
+  cv.width = VW*DPR; cv.height = VH*DPR;
+  const rt = tl.getBoundingClientRect(); TW = rt.width; TH = rt.height;
+  tl.width = TW*DPR; tl.height = TH*DPR;
+}
+function encuadrar(){
+  if(!sp || !sp.ready) return;
+  const alto = sp.alto + Math.hypot(sp.headOff[0], sp.headOff[1])*2.4 + 20;
+  zoom = Math.max(1, Math.min(12, VH*.62/alto));
+  $('rZoom').value = zoom;
+}
+function cargarGato(nombre){ sp = cargarPiezasGato(nombre, () => { encuadrar(); actualizarPanel(); }); }
+
+let ultimoT = performance.now();
+function bucle(ahora){
+  const dt = Math.min(.05, (ahora - ultimoT)/1000); ultimoT = ahora;
+  if(playing){
+    t += dt*vel;
+    const d = anim().duracion;
+    if(anim().loop) t %= d;
+    else if(t >= d){ t = d; playing = false; actualizarPanel(); }
+    if(Math.random() < .15) actualizarPanel();
+  }
+  dibujarVista(); dibujarTL();
+  requestAnimationFrame(bucle);
+}
+window.addEventListener('resize', medir);
+llenarSelects(); medir();
+const gatos = Object.keys(PIEZAS_GATOS);
+if(gatos.length) cargarGato(gatos[0]);
+actualizarPanel();
+if(desdeBorrador) aviso('Se cargó tu borrador');
+requestAnimationFrame(bucle);
+</script>
+</body>
+</html>
