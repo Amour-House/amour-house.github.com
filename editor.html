@@ -417,7 +417,7 @@ $('btnDescartar').onclick = () => {
   A = clonar(typeof ANIMACIONES !== 'undefined' ? ANIMACIONES : {}); prepararDatos();
   undoPila = []; redoPila = []; sucio = false; desdeBorrador = false; t = 0; actualizarPanel(); aviso('Borrador descartado');
 };
-$('btnCatio').onclick = () => window.open('main.html', '_blank');
+$('btnCatio').onclick = () => window.open('index.html', '_blank');
 $('btnAyuda').onclick = () => $('ayuda').hidden = false;
 $('btnCerrarAyuda').onclick = () => $('ayuda').hidden = true;
 $('ayuda').onclick = e => { if(e.target.id === 'ayuda') $('ayuda').hidden = true; };

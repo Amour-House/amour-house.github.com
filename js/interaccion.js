@@ -1,7 +1,7 @@
 'use strict';
 /* ---------- 7. INTERACCIÓN ---------- */
 let tool = 'info', selected = null, laserTimer = 0;
-const card = document.getElementById('card'), hint = document.getElementById('hint');
+const card = document.getElementById('card');
 const portrait = document.getElementById('portrait'), pctx = portrait.getContext('2d');
 
 document.querySelectorAll('[data-tool]').forEach(btn => btn.addEventListener('click', () => {
@@ -13,7 +13,7 @@ document.querySelectorAll('[data-tool]').forEach(btn => btn.addEventListener('cl
 // Enlace del botón "Adoptar" (por ejemplo un formulario o WhatsApp). Si está vacío, solo muestra un mensaje.
 const ENLACE_ADOPTAR = '';
 
-function closeCard(){ selected = null; card.hidden = true; hint.style.opacity = 1; }
+function closeCard(){ selected = null; card.hidden = true; }
 document.getElementById('cardClose').addEventListener('click', closeCard);
 card.addEventListener('click', e => { if(e.target === card) closeCard(); });   // clic fuera del panel lo cierra
 document.getElementById('cardAccion').addEventListener('click', () => {
@@ -46,7 +46,7 @@ function hitCat(x, y){
 function floorPoint(x, y){ return { x: clampX(x), y: clampY(y) }; }
 
 function openCard(c){
-  selected = c; card.hidden = false; hint.style.opacity = 0;
+  selected = c; card.hidden = false;
   document.getElementById('cName').textContent = c.def.name;
   document.getElementById('cDesc').textContent = c.def.desc;
   document.getElementById('cTags').innerHTML = c.def.tags.map(t => `<span>${t}</span>`).join('');

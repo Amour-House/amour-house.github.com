@@ -48,6 +48,16 @@ const PLANTILLA = {
 };
 
 /* Los gatos que ya tienen piezas dibujadas */
+/* ── Bocas compartidas (carpeta gatos/Bocas/) ──
+   Cada gato elige una con  boca:{ estilo:'Boca01' }.
+   Para agregar otra: dibújala en el lienzo de 2500 en el mismo lugar,
+   expórtala como BocaXXCerrada.png y BocaXXAbierta.png, y pide recortarla. */
+const BOCAS = {
+  'Boca01': { cerrada:'Boca01-cerrada.png', abierta:'Boca01-abierta.png', centro:[15, 13] },
+  'Boca02': { cerrada:'Boca02-cerrada.png', abierta:'Boca02-abierta.png', centro:[21, 13] },
+};
+const CARPETA_BOCAS = 'gatos/Bocas/';
+
 const PIEZAS_GATOS = {
   // Lechuga: dibujada en Procreate (lienzo 2500x2500). Las 4 patas van detrás del torso.
   // Los dos ojos vienen en una sola capa (ojo.png con "unico") y la boca en otra.
@@ -58,8 +68,8 @@ const PIEZAS_GATOS = {
               ojoCerca:[103, 88], ojoLejos:[103, 88], boca:[107, 129] }, 
     orejaAtras:    { base:[47, 133], angulo:0 }, 
     orejaAdelante: { base:[52, 138], angulo:0 }, 
-    ojo:  { centro:[77, 38], unico:true, cerrado:null }, 
-    boca: { centro:[14, 13], abierta:null }, 
+    ojo:  { centro:[77, 38], unico:true, cerrado:'ojo-cerrado.png' }, 
+    boca: { estilo:'Boca01' }, 
     patas:{ arriba:[36, 20], pie:[36, 133] }, 
     cola: { base:[93, 162], rigida:true }
   }, 
@@ -73,10 +83,24 @@ const PIEZAS_GATOS = {
               ojoCerca:[127, 88], ojoLejos:[127, 88], boca:[129, 127] }, 
     orejaAtras:    { base:[47, 133], angulo:0 }, 
     orejaAdelante: { base:[52, 138], angulo:0 }, 
-    ojo:  { centro:[74, 38], unico:true, cerrado:null }, 
-    boca: { centro:[21, 13], abierta:null }, 
+    ojo:  { centro:[74, 38], unico:true, cerrado:'ojo-cerrado.png' }, 
+    boca: { estilo:'Boca02' }, 
     patas:{ arriba:[36, 20], pie:[36, 133] }, 
     cola: { base:[112, 164], rigida:true }
+  },
+
+  // Billie Jean: misma plantilla y escala que Lechuga.
+  'Billie Jean': { carpeta:'gatos/Billie Jean/', tamano:0.78, patasDetras:true,
+    torso:  { centro:[132, 78], hombro:[149, 124], cadera:[121, 120],
+              hombroLejos:[222, 111], caderaLejos:[37, 106], cuello:[188, 46], cola:[35, 50] },
+    cabeza: { cuello:[57, 148], centro:[97, 89], orejaAtras:[48, 75], orejaAdelante:[149, 86],
+              ojoCerca:[103, 88], ojoLejos:[103, 88], boca:[108, 127] },
+    orejaAtras:    { base:[47, 133], angulo:0 },
+    orejaAdelante: { base:[52, 138], angulo:0 },
+    ojo:  { centro:[77, 38], unico:true, cerrado:'ojo-cerrado.png' },
+    boca: { estilo:'Boca02' },
+    patas:{ arriba:[36, 20], pie:[36, 133] },
+    cola: { base:[93, 162], rigida:true }
   }, 
 
   // 'Calcetin':  { carpeta:'gatos/calcetin/' },

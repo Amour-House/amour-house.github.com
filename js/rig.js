@@ -138,6 +138,13 @@ function cargarPiezasGato(nombre, alListo){
   const propio = PIEZAS_GATOS[nombre];
   if(!propio) return null;
   const cfg = mezclarCfg(PLANTILLA, propio);
+  // boca del catálogo compartido (gatos/Bocas/)
+  let bocaRuta = cfg.carpeta;
+  if(cfg.boca.estilo && typeof BOCAS !== 'undefined' && BOCAS[cfg.boca.estilo]){
+    const E = BOCAS[cfg.boca.estilo];
+    cfg.boca.archivo = E.cerrada; cfg.boca.abierta = E.abierta; cfg.boca.centro = E.centro;
+    bocaRuta = CARPETA_BOCAS;
+  }
   const sp = { nombre, cfg, img:{}, ready:false, pending:0, failed:false };
   const P = cfg.patas;
   const lista = [
@@ -151,6 +158,7 @@ function cargarPiezasGato(nombre, alListo){
   ];
   for(const [key, file, opcional] of lista){
     if(!file) continue;
+    const ruta = (key === 'boca' || key === 'bocaA') ? bocaRuta : cfg.carpeta;
     sp.pending++;
     const im = new Image();
     const fin = () => { if(--sp.pending === 0 && !sp.failed){ prepararRig(sp); sp.ready = true; if(alListo) alListo(sp); } };
@@ -158,9 +166,9 @@ function cargarPiezasGato(nombre, alListo){
     im.onerror = () => {
       if(opcional){ fin(); return; }
       sp.failed = true;
-      console.warn(`No encontré "${cfg.carpeta + file}". ${nombre} se dibuja con el estilo de código.`);
+      console.warn(`No encontré "${ruta + file}". ${nombre} se dibuja con el estilo de código.`);
     };
-    im.src = cfg.carpeta + file;
+    im.src = ruta + file;
   }
   return sp;
 }

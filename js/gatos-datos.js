@@ -13,12 +13,19 @@ const CAT_DEFS = [
     size:1, head:1.15, leg:1,
     p:{energy:1.2,hunger:1,social:1.3,sleepy:.9,vocal:.8,playful:1.3},
     tags:['Tricolor','Ojos verdes'],
-    edad:'7 años', foto:'Portraits/LechugaPortrait.png' },
+    edad:'2 años', foto:'Portraits/LechugaPortrait.png' },
   { name:'Dorito', desc:'Naranjo con blanco y siempre guiñando un ojo. Un coqueto de tomo y lomo.',
     base:'#ffffff', pattern:'bicolor', c2:'#f0913c', eyes:['#e8a33c','#e8a33c'], ear:'pointy',
     size:1, head:1.15, leg:1,
     p:{energy:1.3,hunger:1.1,social:1.3,sleepy:.9,vocal:1,playful:1.4},
-    tags:['Naranjo','Guiñador'] },
+    tags:['Naranjo','Guiñador'],
+    edad:'3 años', foto:'Portraits/DoritoPortrait.png' },
+  { name:'Billie Jean', desc:'Blanca y negra, con smoking de gala. Elegante y con ganas de bailar.',
+    base:'#ffffff', pattern:'bicolor', c2:'#1c1c1c', eyes:['#8fd16a','#8fd16a'], ear:'pointy',
+    size:1, head:1.15, leg:1,
+    p:{energy:1.2,hunger:1,social:1.1,sleepy:1,vocal:1,playful:1.3},
+    tags:['Blanco y negro','Elegante'],
+    edad:'1 año', foto:'Portraits/BillieJeanPortrait.png' },
 ];
 
 /* Forma de la cabeza y orejas (se calcula una vez por gato) */
