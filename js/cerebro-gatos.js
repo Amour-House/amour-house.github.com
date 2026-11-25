@@ -24,17 +24,20 @@ function exitTask(c){
   const tx = clampX(s.x + side*rand(45,75)*k), ty = clampY((s.ay || s.y) + rand(4,22)*G);
   return { type:'jump', x:tx, y:ty, z:0, h:(s.kind==='box' ? 26 : 12)*k, dur:.4 + s.z/650, spot:null };
 }
-function setTasks(c, list){
+// mantener = true: el gato conserva su ticket (ej: pasa de perseguir a pelear)
+function setTasks(c, list, mantener){
   endTask(c); releaseRes(c);
+  if(!mantener) soltarTicket(c);
+  salirDeFila(c);
   if(list.length && NEED_GROUND.has(list[0].type) && c.spot) list.unshift(exitTask(c));
   c.tasks = list;
 }
 function interruptible(o){ return o.task && !o.hidden && !BUSY.has(o.task.type); }
 function freeForPlay(o, c){ return o!==c && !o.hidden && !o.spot && o.task && ['idle','move','groom','stretch','meow'].includes(o.task.type); }
 function fleeing(o){ return (o.task && o.task.type==='flee') || o.tasks.some(t => t.type==='flee'); }
-function freeSpot(kinds){ const l = spots.filter(s => kinds.includes(s.kind) && !s.occ); return l.length ? pick(l) : null; }
+function freeSpot(kinds){ const l = spots.filter(s => kinds.includes(s.kind) && !s.occ && !s.off); return l.length ? pick(l) : null; }
 function freeBowl(kind, c){
-  const l = bowls.filter(b => b.kind===kind && !b.user && true);
+  const l = bowls.filter(b => b.kind===kind && !b.user && !b.off && !platoVacio(b));
   l.sort((a,b) => Math.hypot(a.x-c.x,a.y-c.y) - Math.hypot(b.x-c.x,b.y-c.y));
   return l[0] || null;
 }
@@ -59,28 +62,35 @@ function nearPoint(c, r){ return { x: clampX(c.x + rand(-r, r)*G), y: clampY(c.y
 function plan(c){
   const p = c.def.p;
   if(c.spot){
-    const w = [['stay',2], ['sleep',1.4*p.sleepy + (c.spot.kind==='bed'?2.5:0)], ['groom',.8], ['meow',.35*p.vocal], ['leave',1.8]];
+    const w = [['stay',2], ['sleep',1.4*p.sleepy + (c.spot.kind==='bed'?2.5:0)], ['groom',.8], ['leave',1.8]];
+    if(hayTicket('maullar')) w.push(['meow',.35*p.vocal]);
     switch(weighted(w)){
       case 'stay':  c.tasks = [{type:'idle', dur:rand(3,8), pose:pick(['sit','loaf','loaf'])}]; break;
       case 'sleep': c.tasks = [{type:'sleep', dur:rand(10,22)}]; break;
       case 'groom': c.tasks = [{type:'groom', dur:rand(2,4)}]; break;
-      case 'meow':  c.tasks = [{type:'meow'}]; break;
+      case 'meow':  c.tasks = [{type:'meow'}]; tomarTicket(c, 'maullar'); break;
       default:      c.tasks = [exitTask(c), {type:'idle', dur:rand(.4,1.2), pose:'stand'}];
     }
     return;
   }
   const others = cats.filter(o => freeForPlay(o, c));
   const food = freeBowl('food', c), water = freeBowl('water', c);
-  const treat = treats.find(t => !t.eaten);
+  const treat = treats.find(t => !t.eaten && hayTicket('premio', t));
   const opts = [
-    ['wander', 1.3], ['sit', .9], ['loaf', .5], ['groom', .6], ['stretch', .3], ['meow', .35*p.vocal],
-    ['sleep', .7*p.sleepy],
-    ['ball', .55*p.playful], ['zoom', .1*p.playful]
+    ['wander', 1.3], ['sit', .9], ['loaf', .5], ['groom', .6], ['stretch', .3],
+    ['sleep', .7*p.sleepy]
   ];
+  // actividades con ticket: solo se ofrecen si queda cupo
+  if(hayTicket('maullar')) opts.push(['meow', .35*p.vocal]);
+  if(hayTicket('pelota'))  opts.push(['ball', .55*p.playful]);
+  if(hayTicket('zoomies')) opts.push(['zoom', .1*p.playful]);
   if(food) opts.push(['eat', .8*p.hunger]);
   if(water) opts.push(['drink', .3]);
   if(treat) opts.push(['treat', 3]);
-  if(others.length){ opts.push(['chase', .7*p.playful*p.social], ['pounce', .45*p.playful], ['sniff', .45*p.social]); }
+  if(others.length){
+    opts.push(['sniff', .45*p.social]);
+    if(hayTicket('jugar', null, 2)) opts.push(['chase', .7*p.playful*p.social], ['pounce', .45*p.playful]);
+  }
   if(freeSpot(['tree','shelf'])) opts.push(['climb', (.5*p.energy + .2)*(c.def.climber ? 2.5 : 1)]);
   if(freeSpot(['box'])) opts.push(['box', .35]);
 
@@ -88,18 +98,19 @@ function plan(c){
   switch(weighted(opts)){
     case 'eat': c.tasks = [...bowlTasks(c, food), {type:'idle', pose:'sit', dur:rand(.8,1.6)}, {type:'groom', dur:rand(1.5,3)}]; break;
     case 'drink': c.tasks = [...bowlTasks(c, water), {type:'idle', pose:'sit', dur:1}]; break;
-    case 'treat': c.tasks = [{type:'treat', treat}]; break;
+    case 'treat': c.tasks = [{type:'treat', treat}]; tomarTicket(c, 'premio', treat); break;
     case 'wander': { const pt = R()<.6 ? nearPoint(c, 260) : {x:rand(40,W-40), y:rand(walkTop,floorBot)}; c.tasks = [{type:'move', x:pt.x, y:pt.y}, {type:'idle', dur:rand(1,4), pose:pick(['sit','stand','sit','loaf'])}]; break; }
     case 'sit': c.tasks = [{type:'idle', dur:rand(3,7), pose:'sit'}]; break;
     case 'loaf': c.tasks = [{type:'idle', dur:rand(4,9), pose:'loaf'}]; break;
     case 'groom': c.tasks = [{type:'idle', dur:.4, pose:'sit'}, {type:'groom', dur:rand(2,4.5)}]; break;
     case 'stretch': c.tasks = [{type:'stretch', dur:1.9}, {type:'idle', dur:.5, pose:'stand'}]; break;
-    case 'meow': c.tasks = [{type:'meow'}, {type:'idle', dur:rand(1,2), pose:'sit'}]; break;
+    case 'meow': c.tasks = [{type:'meow'}, {type:'idle', dur:rand(1,2), pose:'sit'}]; tomarTicket(c, 'maullar'); break;
     case 'sleep': {
       const o = [['floor',1]], bd = freeSpot(['bed']), tr = spotById('t2'), bx = freeSpot(['box']), sh = freeSpot(['shelf']);
       if(bd) o.push(['bed',3]); if(!tr.occ) o.push(['tree',1.2]); if(bx) o.push(['box',1]); if(sh) o.push(['shelf',.8]);
       const ch = weighted(o);
-      if(ch==='bed'){ bd.occ = c; c.reserved = bd; c.tasks = [{type:'move', x:bd.x, y:bd.y}, {type:'occupy', spot:bd}, {type:'idle', dur:.8, pose:'loaf'}, {type:'sleep', dur:rand(12,25)}]; }
+      if(ch==='bed' && bd.z > 20) c.tasks = [...climbTasks(c, bd), {type:'idle', dur:.8, pose:'loaf'}, {type:'sleep', dur:rand(12,25)}];   // cama colgante: hay que saltar
+      else if(ch==='bed'){ bd.occ = c; c.reserved = bd; c.tasks = [{type:'move', x:bd.x, y:bd.y}, {type:'occupy', spot:bd}, {type:'idle', dur:.8, pose:'loaf'}, {type:'sleep', dur:rand(12,25)}]; }
       else if(ch==='tree') c.tasks = [...climbTasks(c, tr), {type:'sleep', dur:rand(12,25)}];
       else if(ch==='box') c.tasks = [...climbTasks(c, bx), {type:'sleep', dur:rand(10,20)}];
       else if(ch==='shelf') c.tasks = [...climbTasks(c, sh), {type:'sleep', dur:rand(10,20)}];
@@ -108,18 +119,20 @@ function plan(c){
     case 'chase': {
       const o = pick(others);
       setTasks(o, [{type:'flee', from:c, dur:rand(2.5,4.5)}]);
+      tomarTicket(o, 'jugar'); tomarTicket(c, 'jugar');
       c.tasks = [{type:'chase', target:o, dur:rand(3,5)}];
       break; }
     case 'pounce': {
       const o = pick(others), side = c.x < o.x ? 1 : -1;
       c.tasks = [{type:'move', x:clampX(o.x - side*95*k), y:o.y}, {type:'crouch', dur:rand(.8,1.4), target:o}, {type:'pounceTo', target:o}];
+      tomarTicket(c, 'jugar');
       break; }
     case 'sniff': {
       const o = pick(others), side = c.x < o.x ? 1 : -1;
       c.tasks = [{type:'move', x:clampX(o.x - side*(c.geo.L*.5 + o.geo.L*.5 + c.geo.hr*1.2)*k), y:o.y}, {type:'sniffAt', target:o, dur:1.8}];
       break; }
-    case 'ball': c.tasks = [{type:'ball', n:randi(2,4)}]; break;
-    case 'zoom': c.tasks = [{type:'zoom'}, {type:'idle', dur:rand(1,2), pose:'loaf'}]; break;
+    case 'ball': c.tasks = [{type:'ball', n:randi(2,4)}]; tomarTicket(c, 'pelota'); break;
+    case 'zoom': c.tasks = [{type:'zoom'}, {type:'idle', dur:rand(1,2), pose:'loaf'}]; tomarTicket(c, 'zoomies'); break;
     case 'climb': { const s = freeSpot(['tree','shelf']); c.tasks = [...climbTasks(c, s), {type:'idle', dur:rand(3,7), pose:pick(['sit','loaf'])}]; break; }
     case 'box': { const s = freeSpot(['box']); c.tasks = [...climbTasks(c, s), {type:'idle', dur:rand(4,9), pose:pick(['sit','loaf'])}]; break; }
   }
@@ -129,8 +142,8 @@ function plan(c){
 function startWrestle(a, b){
   const cl = { x:(a.x+b.x)/2, y:Math.max(a.y,b.y), t:0, dur:1.9, a, b };
   clouds.push(cl);
-  setTasks(a, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'stand', dur:.6}, {type:'groom', dur:2}]);
-  setTasks(b, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'sit', dur:1.2}]);
+  setTasks(a, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'stand', dur:.6}, {type:'groom', dur:2}], true);
+  setTasks(b, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'sit', dur:1.2}], true);
 }
 
 function startTask(c, t){
@@ -140,9 +153,10 @@ function startTask(c, t){
       const o = t.target;
       t.type = 'jump'; t.x = clampX(o.x - (o.x > c.x ? 1 : -1)*8*G); t.y = o.y; t.z = 0; t.h = 26*G; t.dur = .5;
       t.onLand = cc => {
-        if(!o.hidden && !o.spot && Math.hypot(o.x-cc.x, o.y-cc.y) < 70*G && interruptible(o)){
+        // el otro gato también necesita su ticket de "jugar" para seguirle el juego
+        if(!o.hidden && !o.spot && Math.hypot(o.x-cc.x, o.y-cc.y) < 70*G && interruptible(o) && tomarTicket(o, 'jugar')){
           if(R() < .5) startWrestle(cc, o);
-          else { setTasks(o, [{type:'hop'}, {type:'flee', from:cc, dur:rand(2,3.5)}]); cc.tasks = [{type:'chase', target:o, dur:rand(2.5,4)}]; }
+          else { setTasks(o, [{type:'hop'}, {type:'flee', from:cc, dur:rand(2,3.5)}], true); cc.tasks = [{type:'chase', target:o, dur:rand(2.5,4)}]; }
         }
       };
       initJump(c, t); break; }
@@ -333,6 +347,14 @@ function runTask(c, t, dt){
       if(moveToward(c, pt.x, pt.y, 240*sp, dt)){ t.i++; if(t.i >= t.pts.length) return true; }
       return false;
     }
+    case 'esperar': {
+      // sentado esperando su turno, mirando la actividad
+      c.pose = 'sit';
+      const mira = t.act === 'laser' ? laser : t.act === 'pelota' ? ball : null;
+      if(mira && Math.abs(mira.x - c.x) > 4) c.dir = mira.x > c.x ? 1 : -1;
+      if(t.act === 'laser' && !laser.on) return true;
+      return c.taskT > t.dur;
+    }
     case 'occupy': return true;
   }
   return true;
@@ -345,13 +367,14 @@ function updateCat(c, dt){
   if(c.blink > 0) c.blink -= dt;
 
   if(!c.task){
-    if(!c.tasks.length) plan(c);
+    if(!c.tasks.length){ soltarTicket(c); plan(c); }   // terminó lo que hacía: devuelve su ticket
     c.task = c.tasks.shift();
     startTask(c, c.task);
   }
   c.taskT += dt;
   const t = c.task;
   if(runTask(c, t, dt) && c.task === t){
+    if(t.type==='eat' && c.bowl) comerDelPlato(c.bowl);
     if((t.type==='eat' || t.type==='drink') && c.bowl){ if(c.bowl.user === c) c.bowl.user = null; c.bowl = null; }
     if(t.type==='wrestle') c.hidden = false;
     c.task = null;

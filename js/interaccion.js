@@ -64,7 +64,7 @@ function openCard(c){
 }
 function stateText(c){
   const t = c.task; if(!t) return 'Pensando...';
-  const where = c.spot ? ({tree:' en el árbol', shelf:' en la repisa', box:' en la caja', bed:' en su camita'})[c.spot.kind] : '';
+  const where = c.spot ? ({tree:' en el árbol', shelf:' en la repisa', box:' en la caja', bed:(fondoPC() ? ' en la cama colgante' : ' en su camita')})[c.spot.kind] : '';
   switch(t.type){
     case 'idle': return (t.pose === 'loaf' ? 'Haciendo de pancito' : t.pose === 'stand' ? 'Mirando alrededor' : t.pose === 'happy' ? 'Feliz' : 'Sentado, contemplando') + where;
     case 'move': return t.run ? 'Corriendo' : 'Paseando';
@@ -76,6 +76,7 @@ function stateText(c){
     case 'wrestle': return '¡Pelea de juego!'; case 'ball': return 'Jugando con la pelota';
     case 'laser': return 'Cazando el láser'; case 'treat': return 'Yendo por un premio';
     case 'zoom': return '¡ZOOMIES!'; case 'jump': return 'Saltando'; case 'crouch': return 'Preparando el salto';
+    case 'esperar': return 'Esperando su turno' + (t.act === 'laser' ? ' para el láser' : t.act === 'pelota' ? ' para la pelota' : '');
     case 'hop': return '¡Sorpresa!'; case 'sniffAt': return 'Saludando a ' + t.target.def.name;
   }
   return 'Haciendo cosas de gato';
@@ -130,12 +131,18 @@ function setLaser(x, y){ const p = floorPoint(x, y); laser.on = true; laser.x = 
 function dropTreat(x, y){
   const tr = { x, y, z:60*G, vz:0, eaten:false };
   treats.push(tr);
-  const cand = cats.filter(c => interruptible(c)).map(c => ({ c, s: R() - (c.task.type === 'sleep' ? .5 : 0) })).sort((a,b) => b.s - a.s);
-  cand.slice(0, 3).forEach((o, i) => { if(i === 0 || o.s > .4){ setTasks(o.c, [{type:'treat', treat:tr}]); } });
+  // un solo gato va por cada premio (ticket "premio")
+  const cand = cats.filter(c => interruptible(c) && !c.ticket).map(c => ({ c, s: R() - (c.task.type === 'sleep' ? .5 : 0) })).sort((a,b) => b.s - a.s);
+  if(cand.length) darTurno(cand[0].c, 'premio', [{type:'treat', treat:tr}], tr);
 }
 function kickBall(x, y){
   ball.vx = (x - ball.x)*1.6; ball.vy = (y - ball.y)*1.6;
   const v = Math.hypot(ball.vx, ball.vy), mx = 700*G; if(v > mx){ ball.vx *= mx/v; ball.vy *= mx/v; }
-  const cand = cats.filter(c => interruptible(c) && c.task.type !== 'ball' && c.task.type !== 'sleep').sort((a,b) => (b.def.p.playful + R()) - (a.def.p.playful + R()));
-  cand.slice(0, randi(1,2)).forEach(c => setTasks(c, [{type:'ball', n:randi(2,4)}]));
+  // un gato juega con la pelota (ticket "pelota"); a veces otro se pone en la fila
+  if(quienesTienen('pelota').length) return;
+  const cand = cats.filter(c => interruptible(c) && !c.ticket && !['ball','sleep','esperar'].includes(c.task.type)).sort((a,b) => (b.def.p.playful + R()) - (a.def.p.playful + R()));
+  if(!cand.length) return;
+  if(hayTicket('pelota')) darTurno(cand[0], 'pelota', [{type:'ball', n:randi(2,4)}]);
+  else ponerEnFila(cand[0], 'pelota');
+  if(cand[1] && R() < .4) ponerEnFila(cand[1], 'pelota');
 }

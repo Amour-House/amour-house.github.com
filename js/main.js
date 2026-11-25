@@ -15,14 +15,21 @@ function update(dt){
   for(const t of treats){ if(t.z > 0){ t.vz -= 900*G*dt; t.z = Math.max(0, t.z + t.vz*dt); if(t.z === 0 && t.vz < -60*G){ t.vz = -t.vz*.35; t.z = .01; } } }
   treats = treats.filter(t => !t.eaten);
 
-  // el láser atrae gatos
+  // tickets: los que esperan en fila reciben su turno
+  actualizarTickets();
+  actualizarPlatos();
+
+  // el láser atrae gatos: uno lo persigue y los demás hacen fila
   laserTimer -= dt;
   if(laser.on && laserTimer <= 0){
     laserTimer = .5;
     for(const c of cats){
-      if(!interruptible(c) || c.task.type === 'laser') continue;
+      if(!interruptible(c) || ['laser','esperar'].includes(c.task.type)) continue;
       const sleeping = c.task.type === 'sleep';
-      if(R() < .16*c.def.p.playful*(sleeping ? .15 : 1)){ setTasks(c, [{type:'laser', dur:rand(4,11)}]); }
+      if(R() < .16*c.def.p.playful*(sleeping ? .15 : 1)){
+        if(hayTicket('laser')) darTurno(c, 'laser', [{type:'laser', dur:rand(4,9)}]);
+        else ponerEnFila(c, 'laser');
+      }
     }
   }
 
@@ -53,9 +60,10 @@ function render(){
 
   const items = [];
   for(const c of cats) if(!c.hidden) items.push({ k: catKey(c), f: () => drawCatWorld(c) });
-  items.push({ k: tree.y, f: drawTree });
+  if(fondoPC()) agregarMuebles(items);   // PC: rascador, repisas y cama colgante dibujados
+  else items.push({ k: tree.y, f: drawTree });
   items.push({ k: box.y - .6, f: drawBoxBack }, { k: box.y + .6, f: drawBoxFront });
-  items.push({ k: bed.y - 3, f: drawBed }, { k: bed.y + 3, f: drawBedFront });
+  if(!fondoPC()) items.push({ k: bed.y - 3, f: drawBed }, { k: bed.y + 3, f: drawBedFront });
   for(const b of bowls) items.push({ k: b.y, f: () => drawBowl(b) });
   items.push({ k: ball.y, f: drawBall });
   for(const t of treats) items.push({ k: t.y, f: () => drawTreat(t) });
@@ -84,7 +92,7 @@ function render(){
   }
   ctx.globalAlpha = 1;
 
-  drawForeground();
+  // drawForeground();   // planta de la esquina derecha (quitada; para volver a ponerla, borra las barras del inicio)
 
 
   // anillo sobre el gato seleccionado

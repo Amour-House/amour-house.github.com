@@ -6,7 +6,7 @@ const bed = { x:0, y:0 };
 const ball = { x:0, y:0, vx:0, vy:0, rot:0 };
 const bowls = [ {kind:'food', food:1, fx:.33, fy:.8, user:null}, {kind:'food', food:1, fx:.41, fy:.86, user:null}, {kind:'water', food:1, fx:.49, fy:.8, user:null} ];
 const spots = [
-  {kind:'tree', id:'t1', occ:null}, {kind:'tree', id:'t2', occ:null},
+  {kind:'tree', id:'t1', occ:null}, {kind:'tree', id:'t2', occ:null}, {kind:'tree', id:'t3', occ:null, off:true},
   {kind:'shelf', id:'s1', occ:null, fx:.2, zz:150}, {kind:'shelf', id:'s2', occ:null, fx:.6, zz:215},
   {kind:'box', id:'box', occ:null}, {kind:'bed', id:'bed', occ:null}
 ];
@@ -31,11 +31,17 @@ function layout(){
     const s = spotById(id), y = floorTop + 8, ks = G*depth(y);
     Object.assign(s, {x:W*s.fx, y, z:s.zz*ks, ay:floorTop+24*G, appr:42});
   }
-  box.x = W*.11; box.y = fy(.7);
-  Object.assign(spotById('box'), {x:box.x, y:box.y, z:8*G*depth(box.y), ay:box.y+2, appr:70});
+  // la caja: en PC va donde está dibujada sobre el fondo; en celular, a la izquierda
+  const fp = fondoPC();
+  if(fp){ box.x = fp.x + CAJA.enFondo[0]*fp.k; box.y = fp.y + CAJA.enFondo[1]*fp.k; }
+  else { box.x = W*.11; box.y = fy(.7); }
+  box.x = clamp(box.x, 60, W-60); box.y = clamp(box.y, walkTop + 20, floorBot);
+  Object.assign(spotById('box'), {x:box.x, y:box.y, z:cajaAlturaGato(), ay:box.y+2, appr:70});
   bed.x = W*.66; bed.y = fy(.3);
   Object.assign(spotById('bed'), {x:bed.x, y:bed.y, z:6*G*depth(bed.y), ay:bed.y, appr:0});
-  for(const b of bowls){ b.x = W*b.fx; b.y = fy(b.fy); }
+  for(const b of bowls){ b.x = W*b.fx; b.y = fy(b.fy); b.off = false; }
+  spotById('t3').off = true;
+  if(fp) colocarMueblesPC(fp);
   if(firstLayout){ ball.x = W*.56; ball.y = fy(.6); }
   ball.x = clampX(ball.x); ball.y = clampY(ball.y);
 
@@ -47,9 +53,57 @@ function layout(){
   drawBackground();
 }
 
+/* Fondo dibujado (solo PC). En celular se sigue usando el fondo hecho con código.
+   Se ajusta para cubrir toda la pantalla, recortando un poco los bordes si hace falta. */
+const FONDO_PC = new Image();
+const ANCHO_MIN_PC = 761;              // desde este ancho se considera PC (igual que el panel)
+FONDO_PC.onload = () => { if(W) layout(); };
+
+/* En PC, los lugares para subirse y los platos van donde están dibujados.
+   Los números son píxeles del lienzo de 1920x1080:
+   [x, altura donde se para el gato, altura del suelo debajo] */
+const LUGARES_PC = {
+  t1:  [80, 458, 632],    // rascador: plataforma izquierda
+  t2:  [150, 354, 632],   // rascador: plataforma de arriba
+  t3:  [226, 518, 632],   // rascador: plataforma derecha
+  s1:  [1067, 266, 552],  // reposadera 1
+  s2:  [1660, 365, 552],  // reposadera 2
+  bed: [576, 388, 565],   // amarra (cama colgante): el gato se para en la parte rosada
+};
+function colocarMueblesPC(fp){
+  const P = (x, y) => [fp.x + x*fp.k, fp.y + y*fp.k];
+  for(const id in LUGARES_PC){
+    let [x, yPie, ySuelo] = LUGARES_PC[id]; const s = spotById(id);
+    if(id === 'bed') yPie = AMARRA.pivote[1] + (yPie - AMARRA.pivote[1])*AMARRA.escala;   // la cama colgante está agrandada
+    const [px, py] = P(x, ySuelo);
+    Object.assign(s, { x:px, y:py, z:(ySuelo - yPie)*fp.k, ay:Math.max(py + 10*fp.k, walkTop + 8), appr:id === 'bed' ? 55 : 65, off:false });
+  }
+  // platos: uno de comida y uno de agua, donde están dibujados (el segundo de comida no se usa)
+  let comidaUsada = false;
+  for(const b of bowls){
+    if(b.kind === 'food' && comidaUsada){ b.off = true; continue; }
+    const e = PLATO[b.kind].enFondo, [px, py] = P(e[0], e[1]);
+    b.x = px; b.y = py;
+    if(b.kind === 'food') comidaUsada = true;
+  }
+}
+
+/* Si se está usando el fondo dibujado: escala y esquina donde queda la imagen */
+function fondoPC(){
+  if(!(W >= ANCHO_MIN_PC && FONDO_PC.complete && FONDO_PC.naturalWidth)) return null;
+  const k = Math.max(W / FONDO_PC.naturalWidth, H / FONDO_PC.naturalHeight);
+  return { k, x:(W - FONDO_PC.naturalWidth*k)/2, y:(H - FONDO_PC.naturalHeight*k)/2 };
+}
+FONDO_PC.src = 'Imagenes/Fondo.png';
+
 function drawBackground(){
   bgC.width = W*DPR; bgC.height = H*DPR;
   const b = bctx; b.setTransform(DPR,0,0,DPR,0,0);
+  const fp = fondoPC();
+  if(fp){
+    b.drawImage(FONDO_PC, fp.x, fp.y, FONDO_PC.naturalWidth*fp.k, FONDO_PC.naturalHeight*fp.k);
+    return;
+  }
   b.lineCap = 'round'; b.lineJoin = 'round';
   const rr = seeded(7);
   const beamH = Math.max(26, H*.05);

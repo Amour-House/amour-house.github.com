@@ -2,7 +2,87 @@
 /* ---------- 4. OBJETOS ---------- */
 function outlineFill(g, path, fill, lw){ g.fillStyle = fill; g.fill(path); g.strokeStyle = INK; g.lineWidth = lw || 2.5; g.stroke(path); }
 
+/* ── Platos (Imagenes/BowlFood.png y Imagenes/Agua.png) ──
+   Las imágenes están en el lienzo de 1920x1080. El plato de comida vacío es
+   opcional: expórtalo como Imagenes/BowlEmpty.png en el MISMO lugar del lienzo
+   que el lleno. Cuando exista, los gatos se van comiendo la comida, el plato
+   queda vacío y se rellena solo después de PLATO.rellenar segundos. */
+const PLATO = {
+  tamano:.7,                       // tamaño de los platos (1 = como están dibujados)
+  anchoCelular:44,                 // ancho del plato en celular (como el plato anterior)
+  porComida:.5,                    // cuánto se come un gato cada vez (1 = el plato entero)
+  rellenar:25,                     // segundos que el plato queda vacío antes de rellenarse
+  food:  { lleno:'Imagenes/BowlFood.png', vacio:'Imagenes/BowlEmpty.png',
+           recorte:[1217, 796, 142, 95], base:[71, 90], enFondo:[1288, 886] },
+  water: { lleno:'Imagenes/Agua.png',
+           recorte:[450, 806, 142, 62],  base:[70, 57], enFondo:[520, 863] },
+};
+const PLATO_IMG = {}, platoListo = {};
+for(const tipo of ['food','water']) for(const est of ['lleno','vacio']){
+  const archivo = PLATO[tipo][est]; if(!archivo) continue;
+  const im = new Image(), key = tipo + '-' + est;
+  im.onload = () => { platoListo[key] = true; };
+  im.src = archivo; PLATO_IMG[key] = im;
+}
+
+function platoVacio(b){ return b.kind === 'food' && platoListo['food-vacio'] && b.food <= .02; }
+// se llama cuando un gato termina de comer
+function comerDelPlato(b){
+  if(!platoListo['food-vacio']) return;     // sin imagen de plato vacío, la comida no se acaba
+  b.food = Math.max(0, b.food - PLATO.porComida);
+  if(b.food <= .02) b.rellenoEn = time + PLATO.rellenar;
+}
+function actualizarPlatos(){
+  for(const b of bowls) if(b.kind === 'food' && b.food <= .02 && b.rellenoEn && time >= b.rellenoEn){ b.food = 1; b.rellenoEn = 0; }
+}
+function dibujarPlatoImagen(b){
+  const P = PLATO[b.kind], fp = fondoPC(), [rx, ry, rw, rh] = P.recorte;
+  const s = (fp ? fp.k : PLATO.anchoCelular*G*depth(b.y) / rw) * PLATO.tamano;
+  const img = platoVacio(b) ? PLATO_IMG['food-vacio'] : PLATO_IMG[b.kind + '-lleno'];
+  ctx.fillStyle = 'rgba(60,35,20,.2)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, rw*.5*s, 8*s, 0, 0, TAU); ctx.fill();
+  ctx.drawImage(img, rx, ry, rw, rh, b.x - P.base[0]*s, b.y - P.base[1]*s, rw*s, rh*s);
+}
+
+/* ── Muebles dibujados para PC (rascador, repisas, cama colgante) ──
+   Todas las imágenes están en el lienzo de 1920x1080, en su lugar sobre el fondo.
+   caja:   x, y, ancho, alto de la parte dibujada dentro de la imagen
+   suelo:  altura del suelo bajo el mueble (para saber qué va delante y qué detrás)
+   delante: (opcional) el mueble se dibuja encima del gato que está en él
+            (como las cuerdas de la cama colgante); si no, va detrás
+   escala/pivote: (opcional) para agrandar el mueble desde un punto fijo */
+// cama colgante: más grande, escalada desde donde cuelga (arriba al centro)
+const AMARRA = { escala:1, pivote:[576, 0] };
+const MUEBLES_PC = [
+  { archivo:'Imagenes/Rascador.png',    caja:[10, 340, 300, 325],  suelo:632 },
+  { archivo:'Imagenes/Reposadera1.png', caja:[960, 250, 215, 50],  suelo:552 },
+  { archivo:'Imagenes/Reposadera2.png', caja:[1555, 350, 215, 50], suelo:552 },
+  { archivo:'Imagenes/AmarraLOWER.png', caja:[490, 0, 175, 415],   suelo:565, escala:AMARRA.escala, pivote:AMARRA.pivote, detras:true },
+  { archivo:'Imagenes/AmarraUPPER.png', caja:[490, 0, 175, 415],   suelo:565, escala:AMARRA.escala, pivote:AMARRA.pivote, delante:true },
+];
+for(const m of MUEBLES_PC){ m.img = new Image(); m.img.onload = () => { m.listo = true; }; m.img.src = m.archivo; }
+
+function dibujarMueble(m, desde){
+  const fp = fondoPC(); if(!fp || !m.listo) return;
+  const [x, y, w, h] = m.caja, y0 = Math.max(y, desde || 0), hh = y + h - y0;
+  if(hh <= 0) return;
+  const e = m.escala || 1, [px, py] = m.pivote || [0, 0];
+  const X = px + (x - px)*e, Y = py + (y0 - py)*e;   // posición ya agrandada, en píxeles del lienzo
+  ctx.drawImage(m.img, x, y0, w, hh, fp.x + X*fp.k, fp.y + Y*fp.k, w*e*fp.k, hh*e*fp.k);
+}
+// agrega los muebles a la lista de cosas a dibujar, ordenados por profundidad
+function agregarMuebles(items){
+  const fp = fondoPC(); if(!fp) return;
+  for(const m of MUEBLES_PC){
+    const ys = fp.y + m.suelo*fp.k;
+    if(m.delante) items.push({ k: ys + .6, f: () => dibujarMueble(m) });
+    else if(m.detras) items.push({ k: ys - .6, f: () => dibujarMueble(m) });
+    else items.push({ k: ys - 1, f: () => dibujarMueble(m) });
+  }
+}
+
 function drawBowl(b){
+  if(b.off) return;
+  if(platoListo[b.kind + '-lleno']){ dibujarPlatoImagen(b); return; }
   const k = G*depth(b.y), x = b.x, y = b.y;
   const g = ctx;
   g.fillStyle = 'rgba(60,35,20,.2)'; g.beginPath(); g.ellipse(x, y+2*k, 24*k, 6*k, 0, 0, TAU); g.fill();
@@ -66,7 +146,47 @@ function drawTree(){
   g.strokeStyle = INK; g.lineWidth = 9*k+3; g.stroke(rim); g.strokeStyle = '#ffd56b'; g.lineWidth = 9*k; g.stroke(rim);
 }
 
+/* ── Caja (Imagenes/Caja.png) ──
+   La imagen está en el lienzo de 1920x1080, en el lugar donde va sobre el fondo.
+   Se corta en dos: la parte de atrás se dibuja antes del gato y el frente
+   (desde el borde de adelante hacia abajo) después, para que el gato quede adentro. */
+const CAJA = {
+  archivo:'Imagenes/Caja.png',
+  recorte:[1371, 680, 281, 158],   // x, y, ancho, alto de la caja dentro de la imagen
+  base:[161, 146],                 // punto del suelo al centro del frente (dentro del recorte)
+  borde:61,                        // altura del borde de adelante (dentro del recorte)
+  anchoFrente:166,                 // ancho de la cara de adelante, en píxeles de la imagen
+  sombra:[-20, 132, 26],           // centro, ancho y alto de la sombra, en píxeles de la imagen
+  enFondo:[1371+161, 680+146],     // dónde queda ese punto sobre Fondo.png
+};
+const CAJA_IMG = new Image();
+let cajaLista = false;
+CAJA_IMG.onload = () => { cajaLista = true; if(W) layout(); };
+CAJA_IMG.src = CAJA.archivo;
+
+// tamaño de la caja: en PC, igual que el fondo; en celular, como la caja anterior
+function cajaEscala(){
+  const fp = fondoPC();
+  return fp ? fp.k : 100*G*depth(box.y) / CAJA.anchoFrente;
+}
+// a qué altura queda sentado un gato dentro de la caja
+function cajaAlturaGato(){
+  if(!cajaLista) return 8*G*depth(box.y);
+  return (CAJA.base[1] - CAJA.borde)*cajaEscala()*.3;
+}
+function dibujarCaja(desde){
+  const s = cajaEscala(), [rx, ry, rw, rh] = CAJA.recorte;
+  const x0 = box.x - CAJA.base[0]*s, y0 = box.y - CAJA.base[1]*s;
+  ctx.drawImage(CAJA_IMG, rx, ry + desde, rw, rh - desde, x0, y0 + desde*s, rw*s, (rh - desde)*s);
+}
+
 function drawBoxBack(){
+  if(cajaLista){
+    const s = cajaEscala(), g = ctx;
+    g.fillStyle = 'rgba(60,35,20,.18)'; g.beginPath(); g.ellipse(box.x + CAJA.sombra[0]*s, box.y + (4 - CAJA.sombra[2])*s, CAJA.sombra[1]*s, CAJA.sombra[2]*s, 0, 0, TAU); g.fill();
+    dibujarCaja(0);
+    return;
+  }
   const k = G*depth(box.y), x = box.x, y = box.y, w = 50*k, h = 42*k, d = 14*k, g = ctx;
   g.fillStyle = 'rgba(60,35,20,.22)'; g.beginPath(); g.ellipse(x+6*k, y+3*k, 52*k, 10*k, 0, 0, TAU); g.fill();
   const flap = new Path2D(); flap.moveTo(x-w+d, y-h-d); flap.lineTo(x-w+d+6*k, y-h-d-22*k); flap.lineTo(x+w+d-4*k, y-h-d-20*k); flap.lineTo(x+w+d, y-h-d); flap.closePath();
@@ -75,6 +195,7 @@ function drawBoxBack(){
   outlineFill(g, inside, '#7a4f2a');
 }
 function drawBoxFront(){
+  if(cajaLista){ dibujarCaja(CAJA.borde); return; }
   const k = G*depth(box.y), x = box.x, y = box.y, w = 50*k, h = 42*k, d = 14*k, g = ctx;
   const side = new Path2D(); side.moveTo(x+w, y); side.lineTo(x+w+d, y-d); side.lineTo(x+w+d, y-h-d); side.lineTo(x+w, y-h); side.closePath();
   outlineFill(g, side, '#b98149');
