@@ -54,8 +54,8 @@ function dibujarPlatoImagen(b){
 const AMARRA = { escala:1, pivote:[576, 0] };
 const MUEBLES_PC = [
   { archivo:'Imagenes/Rascador.png',    caja:[10, 340, 300, 325],  suelo:632 },
-  { archivo:'Imagenes/Reposadera1.png', caja:[960, 250, 215, 50],  suelo:552 },
-  { archivo:'Imagenes/Reposadera2.png', caja:[1555, 350, 215, 50], suelo:552 },
+  { archivo:'Imagenes/Reposadera1.png', caja:[940, 200, 860, 250], suelo:552 },   // el recuadro cubre las dos repisas,
+  { archivo:'Imagenes/Reposadera2.png', caja:[940, 200, 860, 250], suelo:552 },   // así da igual cuál es cuál
   { archivo:'Imagenes/AmarraLOWER.png', caja:[490, 0, 175, 415],   suelo:565, escala:AMARRA.escala, pivote:AMARRA.pivote, detras:true },
   { archivo:'Imagenes/AmarraUPPER.png', caja:[490, 0, 175, 415],   suelo:565, escala:AMARRA.escala, pivote:AMARRA.pivote, delante:true },
 ];
