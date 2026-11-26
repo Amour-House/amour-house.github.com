@@ -16,6 +16,9 @@
   .brand .logo img{position:absolute;width:113.13%;left:-7.65%;top:-178.95%;display:block}
 
 
+  .btn-musica{position:fixed;top:16px;right:18px;z-index:6;width:48px;height:48px;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;background:var(--paper2);border:3px solid var(--ink);border-radius:14px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .08s}
+  .btn-musica:hover{transform:translateY(-2px)}
+  .btn-musica:active{transform:translateY(1px)}
   .toolbar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;background:var(--paper);border:3px solid var(--ink);border-radius:18px;padding:8px;box-shadow:4px 4px 0 var(--ink);z-index:5}
   .toolbar button{font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:var(--paper2);border:2.5px solid var(--ink);border-radius:12px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:transform .08s, background .15s;white-space:nowrap}
   .toolbar button:hover{transform:translateY(-2px)}
