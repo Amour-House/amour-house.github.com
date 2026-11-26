@@ -34,14 +34,15 @@ function layout(){
     Object.assign(s, {x:W*s.fx, y, z:s.zz*ks, ay:floorTop+24*G, appr:42});
   }
   // la caja: en PC va donde está dibujada sobre el fondo; en celular, a la izquierda
-  const fp = fondoPC();
+  const fp = fondoPC(), fc = fondoCel();
   if(fp){ box.x = fp.x + CAJA.enFondo[0]*fp.k; box.y = fp.y + CAJA.enFondo[1]*fp.k; }
+  else if(fc){ box.x = fc.x + CAJA_FONDO_CEL.en[0]*fc.k; box.y = fc.y + CAJA_FONDO_CEL.en[1]*fc.k; }
   else { box.x = W*.11; box.y = fy(.7); }
   box.x = clamp(box.x, 60, W-60); box.y = clamp(box.y, walkTop + 20, floorBot);
   Object.assign(spotById('box'), {x:box.x, y:box.y, z:cajaAlturaGato(), ay:box.y+2, appr:70});
   bed.x = W*.66; bed.y = fy(.3);
   Object.assign(spotById('bed'), {x:bed.x, y:bed.y, z:6*G*depth(bed.y), ay:bed.y, appr:0});
-  for(const b of bowls){ b.x = W*b.fx; b.y = fy(b.fy); b.off = false; }
+  for(const b of bowls){ b.x = W*b.fx; b.y = fy(b.fy); b.off = false; b.sCel = 0; }
   spotById('t3').off = true;
   if(fondoImg()) colocarMuebles();
   if(firstLayout){ ball.x = W*.56; ball.y = fy(.6); }
@@ -86,9 +87,37 @@ const MUEBLES_CEL = {
 };
 const LINEA_MURO = 548;   // altura (en el lienzo) donde termina la pared y empieza el piso
 
+/* Celular con FondoMobile.png: posiciones copiadas de la imagen de referencia,
+   en píxeles de FondoMobile.png (1080x2400). Así calzan con el fondo en cualquier celular.
+   ancla:  punto de la imagen del mueble (lienzo 1920x1080) que se usa para ubicarlo
+   en:     dónde va ese punto sobre FondoMobile.png
+   escala: tamaño (1 = igual que en el lienzo de 1920x1080)
+   suelo:  altura del suelo bajo el mueble, en FondoMobile.png */
+const MUEBLES_FONDO_CEL = {
+  rascador:  { ancla:[155, 632],  en:[183, 1272], escala:1.17, suelo:1272 },
+  repisaIzq: { ancla:[969, 258],  en:[261, 735],  escala:1.11, suelo:1170 },   // repisa alta (izquierda)
+  repisaDer: { ancla:[1562, 357], en:[826, 819],  escala:1.11, suelo:1170 },   // repisa baja (derecha)
+  // la amarra no está en la referencia: usa MUEBLES_CEL
+};
+const CAJA_FONDO_CEL = { en:[773, 1545], escala:.985 };   // centro de abajo del frente de la caja
+// platos en celular: tipo, dónde va el centro de abajo y ancho, en FondoMobile.png
+const PLATOS_FONDO_CEL = [
+  { tipo:'food',  en:[645, 1925], ancho:120 },
+  { tipo:'food',  en:[885, 2108], ancho:150 },
+  { tipo:'water', en:[204, 1920], ancho:146 },
+  { tipo:'water', en:[278, 2093], ancho:171 },
+];
+// devuelve el fondo solo si es FondoMobile.png (en celular)
+function fondoCel(){ const fi = fondoImg(); return fi && fi.img === FONDO_CEL ? fi : null; }
+
 // cómo se pasa de píxeles del lienzo a la pantalla para cada mueble
 function transformarMueble(grupo){
   const fp = fondoPC(); if(fp) return { ox:fp.x, oy:fp.y, s:fp.k };
+  const fc = fondoCel(), R = MUEBLES_FONDO_CEL[grupo];
+  if(fc && R){
+    const s = R.escala*fc.k;
+    return { ox:fc.x + R.en[0]*fc.k - R.ancla[0]*s, oy:fc.y + R.en[1]*fc.k - R.ancla[1]*s, s, suelo:fc.y + R.suelo*fc.k };
+  }
   const fi = fondoImg(), M = MUEBLES_CEL[grupo]; if(!fi || !M) return null;
   const s = G*MUEBLES_CEL.escala;
   const muro = fi.muro;
@@ -100,8 +129,20 @@ function colocarMuebles(){
     let [grupo, x, yPie, ySuelo] = LUGARES_PC[id]; const s = spotById(id), T = transformarMueble(grupo);
     if(!T) continue;
     if(id === 'bed') yPie = AMARRA.pivote[1] + (yPie - AMARRA.pivote[1])*AMARRA.escala;   // por si la cama colgante está agrandada
-    const px = T.ox + x*T.s, py = T.oy + ySuelo*T.s;
+    const px = T.ox + x*T.s, py = T.suelo !== undefined ? T.suelo : T.oy + ySuelo*T.s;
     Object.assign(s, { x:px, y:py, z:(ySuelo - yPie)*T.s, ay:clamp(py + 10*T.s, walkTop + 8, floorBot), appr:id === 'bed' ? 55 : 65, off:false });
+  }
+  // celular con FondoMobile: platos según la referencia
+  const fc = fondoCel();
+  if(fc){
+    const usados = { food:0, water:0 };
+    for(const b of bowls){
+      const lista = PLATOS_FONDO_CEL.filter(p => p.tipo === b.kind), P = lista[usados[b.kind]++];
+      if(!P){ b.off = true; continue; }
+      b.x = fc.x + P.en[0]*fc.k; b.y = fc.y + P.en[1]*fc.k;
+      b.sCel = P.ancho/PLATO[b.kind].anchoDibujo*fc.k;
+    }
+    return;
   }
   // platos (solo PC): dos de comida y dos de agua donde están dibujados
   const fp = fondoPC(); if(!fp) return;

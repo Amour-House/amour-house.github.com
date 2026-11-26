@@ -13,10 +13,10 @@ const PLATO = {
   porComida:.5,                    // cuánto se come un gato cada vez (1 = el plato entero)
   rellenar:25,                     // segundos que el plato queda vacío antes de rellenarse
   food:  { lleno:'Imagenes/BowlFood.png', vacio:'Imagenes/BowlEmpty.png',
-           recorte:[1217, 796, 142, 95], base:[71, 90], enFondo:[1288, 886],
+           recorte:[1217, 796, 142, 95], base:[71, 90], anchoDibujo:132, enFondo:[1288, 886],
            enFondo2:[1135, 872] },   // dónde va el segundo plato de comida en PC
   water: { lleno:'Imagenes/Agua.png',
-           recorte:[450, 806, 142, 62],  base:[70, 57], enFondo:[520, 863],
+           recorte:[450, 806, 142, 62],  base:[70, 57], anchoDibujo:129, enFondo:[520, 863],
            enFondo2:[690, 878] },    // dónde va el segundo plato de agua en PC
 };
 const PLATO_IMG = {}, platoListo = {};
@@ -39,7 +39,7 @@ function actualizarPlatos(){
 }
 function dibujarPlatoImagen(b){
   const P = PLATO[b.kind], fp = fondoPC(), [rx, ry, rw, rh] = P.recorte;
-  const s = fp ? fp.k*PLATO.tamano : PLATO.anchoCelular*G*depth(b.y) / rw;   // en celular, más grandes
+  const s = fp ? fp.k*PLATO.tamano : b.sCel ? b.sCel : PLATO.anchoCelular*G*depth(b.y) / rw;   // en celular, según la referencia
   const img = platoVacio(b) ? PLATO_IMG['food-vacio'] : PLATO_IMG[b.kind + '-lleno'];
   ctx.fillStyle = 'rgba(60,35,20,.2)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, rw*.5*s, 8*s, 0, 0, TAU); ctx.fill();
   ctx.drawImage(img, rx, ry, rw, rh, b.x - P.base[0]*s, b.y - P.base[1]*s, rw*s, rh*s);
@@ -186,8 +186,9 @@ CAJA_IMG.src = CAJA.archivo;
 
 // tamaño de la caja: en PC, igual que el fondo; en celular, como la caja anterior
 function cajaEscala(){
-  const fp = fondoPC();
-  return fp ? fp.k : 100*G*depth(box.y) / CAJA.anchoFrente;
+  const fp = fondoPC(); if(fp) return fp.k;
+  const fc = fondoCel(); if(fc) return CAJA_FONDO_CEL.escala*fc.k;
+  return 100*G*depth(box.y) / CAJA.anchoFrente;
 }
 // a qué altura queda sentado un gato dentro de la caja
 function cajaAlturaGato(){
