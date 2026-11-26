@@ -172,7 +172,7 @@ function startTask(c, t){
       };
       initJump(c, t); break; }
     case 'jump': initJump(c, t); break;
-    case 'meow': if(t.enojo) sonidoEnojo(c); else sonidoMiau(c); break;
+    case 'meow': if(t.enojo) sonidoEnojo(c); else sonidoMiau(c, t.forzar); break;
     case 'pet': empezarRonroneo(c); break;
     case 'flee': if(R() < .5) sonidoEnojo(c); break;
     case 'hop': t.z0 = c.z; break;
@@ -408,7 +408,7 @@ function updateCat(c, dt){
     c.task = null;
   }
   // miau suelto: un gato sentado o mirando a veces maúlla y sigue en lo suyo
-  if(c.task && c.task.type === 'idle' && !c.task.face && R() < dt*MIAU_SUELTO && hayTicket('maullar')){
+  if(c.task && c.task.type === 'idle' && !c.task.face && R() < dt*MIAU_SUELTO*p.vocal && hayTicket('maullar')){
     c.tasks.unshift({type:'meow'}, {type:'idle', pose:c.task.pose, dur:Math.max(.5, c.task.dur - c.taskT)});
     c.task = null;
   }

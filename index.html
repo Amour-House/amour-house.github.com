@@ -17,10 +17,14 @@
   <div class="logo"><img src="Imagenes/AmourLogo.png" alt="Amour"></div>
 </div>
 
-<!-- volumen de la música: el parlante silencia y la barrita sube o baja el volumen -->
+<!-- volumen: el botón abre un panel con la música y los gatos -->
 <div class="volumen" id="volumen">
-  <button class="btn-musica" id="btnMusica" aria-label="Silenciar la música">🔊</button>
-  <input type="range" id="volMusica" min="0" max="100" step="1" value="40" aria-label="Volumen de la música">
+  <button class="btn-musica" id="btnMusica" aria-label="Volumen" title="Volumen" aria-expanded="false" aria-controls="panelVolumen">🔊</button>
+  <div class="panel-volumen" id="panelVolumen" hidden>
+    <p class="vol-titulo">Volumen</p>
+    <label class="vol-fila"><span>🎵 Música</span><input type="range" id="volMusica" min="0" max="100" step="1" value="40"></label>
+    <label class="vol-fila"><span>🐱 Gatos</span><input type="range" id="volGatos" min="0" max="100" step="1" value="65"></label>
+  </div>
 </div>
 
 <!-- Ficha del gato: panel sobre la escena -->

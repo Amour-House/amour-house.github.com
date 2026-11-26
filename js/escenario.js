@@ -79,10 +79,10 @@ const LUGARES_PC = {
           (0 = donde empieza el piso, 1 = abajo del todo) */
 const MUEBLES_CEL = {
   escala: .75,                                            // tamaño de los muebles (respecto a los gatos)
-  rascador:  { ancla:[155, 632],  x:.16, piso:.2 },
-  repisaIzq: { ancla:[1067, 552], x:.4,  piso:'muro' },
-  amarra:    { ancla:[576, 565],  x:.62, piso:'muro' },
-  repisaDer: { ancla:[1660, 552], x:.86, piso:'muro' },
+  rascador:  { ancla:[155, 632],  x:.15, piso:.4 },    // sobre el arbusto de la izquierda
+  repisaIzq: { ancla:[1067, 552], x:.84, piso:'muro' },   // la repisa alta
+  amarra:    { ancla:[576, 565],  x:.5,  piso:'muro' },
+  repisaDer: { ancla:[1660, 552], x:.13, piso:'muro' },   // la repisa baja
 };
 const LINEA_MURO = 548;   // altura (en el lienzo) donde termina la pared y empieza el piso
 
@@ -91,7 +91,7 @@ function transformarMueble(grupo){
   const fp = fondoPC(); if(fp) return { ox:fp.x, oy:fp.y, s:fp.k };
   const fi = fondoImg(), M = MUEBLES_CEL[grupo]; if(!fi || !M) return null;
   const s = G*MUEBLES_CEL.escala;
-  const muro = fi.y + LINEA_MURO*fi.k;
+  const muro = fi.muro;
   const sx = W*M.x, sy = M.piso === 'muro' ? muro + 2 : floorTop + (floorBot - floorTop)*M.piso;
   return { ox:sx - M.ancla[0]*s, oy:sy - M.ancla[1]*s, s };
 }
@@ -117,14 +117,24 @@ function colocarMuebles(){
 /* El fondo dibujado cubre toda la pantalla (en celular se ve la parte del centro).
    fondoImg(): escala y esquina de la imagen, en PC y en celular.
    fondoPC():  lo mismo, pero solo en PC (ahí los muebles van donde están dibujados). */
-const CENTRO_FONDO_CEL = 1150;   // en celular: qué parte del fondo se ve (x del lienzo que queda al centro)
+/* Fondo para celular (Imagenes/FondoMobile.png, vertical). Si no carga, en celular
+   se usa la parte del centro de Fondo.png. */
+const FONDO_CEL = new Image();
+const LINEA_MURO_CEL = 1170;     // altura (en FondoMobile.png) donde termina la pared y empieza el piso
+const CENTRO_FONDO_CEL = 1150;   // si no hay FondoMobile: qué parte de Fondo.png se ve en celular
+FONDO_CEL.onload = () => { if(W) layout(); };
+FONDO_CEL.src = 'Imagenes/FondoMobile.png';
+
 function fondoImg(){
-  if(!(FONDO_PC.complete && FONDO_PC.naturalWidth)) return null;
-  const iw = FONDO_PC.naturalWidth, ih = FONDO_PC.naturalHeight;
+  const cel = W < ANCHO_MIN_PC, usarCel = cel && FONDO_CEL.complete && FONDO_CEL.naturalWidth;
+  const img = usarCel ? FONDO_CEL : FONDO_PC;
+  if(!(img.complete && img.naturalWidth)) return null;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
   const k = Math.max(W / iw, H / ih);
   let x = (W - iw*k)/2;
-  if(W < ANCHO_MIN_PC) x = clamp(W/2 - CENTRO_FONDO_CEL*k, W - iw*k, 0);
-  return { k, x, y:(H - ih*k)/2 };
+  if(cel && !usarCel) x = clamp(W/2 - CENTRO_FONDO_CEL*k, W - iw*k, 0);
+  const y = (H - ih*k)/2;
+  return { img, k, x, y, muro: y + (usarCel ? LINEA_MURO_CEL : LINEA_MURO)*k };
 }
 function fondoPC(){ return W >= ANCHO_MIN_PC ? fondoImg() : null; }
 FONDO_PC.src = 'Imagenes/Fondo.png';
@@ -134,7 +144,7 @@ function drawBackground(){
   const b = bctx; b.setTransform(DPR,0,0,DPR,0,0);
   const fp = fondoImg();
   if(fp){
-    b.drawImage(FONDO_PC, fp.x, fp.y, FONDO_PC.naturalWidth*fp.k, FONDO_PC.naturalHeight*fp.k);
+    b.drawImage(fp.img, fp.x, fp.y, fp.img.naturalWidth*fp.k, fp.img.naturalHeight*fp.k);
     return;
   }
   b.lineCap = 'round'; b.lineJoin = 'round';

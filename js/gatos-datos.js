@@ -23,7 +23,7 @@ const CAT_DEFS = [
   { name:'Billie Jean', desc:'Blanca y negra, con smoking de gala. Elegante y con ganas de bailar.',
     base:'#ffffff', pattern:'bicolor', c2:'#1c1c1c', eyes:['#8fd16a','#8fd16a'], ear:'pointy',
     size:1, head:1.15, leg:1,
-    p:{energy:1.2,hunger:1,social:1.1,sleepy:1,vocal:1,playful:1.3},
+    p:{energy:1.2,hunger:1,social:1.1,sleepy:1,vocal:1.8,playful:1.3},   // vocal: qué tan seguido maúlla (Billie Jean es conversadora)
     tags:['Blanco y negro','Elegante'],
     edad:'1 año', foto:'Portraits/BillieJeanPortrait.png' },
 ];

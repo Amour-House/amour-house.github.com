@@ -47,6 +47,10 @@ function floorPoint(x, y){ return { x: clampX(x), y: clampY(y) }; }
 
 function openCard(c){
   selected = c; card.hidden = false;
+  // al conocerlo, el gato te saluda con su miau (abre la boca si no está ocupado)
+  desbloquearAudio();
+  if(interruptible(c)) setTasks(c, [{type:'meow', forzar:true}]);
+  else sonidoMiau(c, true);
   document.getElementById('cName').textContent = c.def.name;
   document.getElementById('cDesc').textContent = c.def.desc;
   document.getElementById('cTags').innerHTML = c.def.tags.map(t => `<span>${t}</span>`).join('');
