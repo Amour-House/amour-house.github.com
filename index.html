@@ -17,8 +17,11 @@
   <div class="logo"><img src="Imagenes/AmourLogo.png" alt="Amour"></div>
 </div>
 
-<!-- botón para silenciar la música de fondo -->
-<button class="btn-musica" id="btnMusica" aria-label="Silenciar la música">🔊</button>
+<!-- volumen de la música: el parlante silencia y la barrita sube o baja el volumen -->
+<div class="volumen" id="volumen">
+  <button class="btn-musica" id="btnMusica" aria-label="Silenciar la música">🔊</button>
+  <input type="range" id="volMusica" min="0" max="100" step="1" value="40" aria-label="Volumen de la música">
+</div>
 
 <!-- Ficha del gato: panel sobre la escena -->
 <div class="panel-fondo" id="card" hidden>

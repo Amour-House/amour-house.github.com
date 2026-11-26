@@ -60,10 +60,10 @@ function render(){
 
   const items = [];
   for(const c of cats) if(!c.hidden) items.push({ k: catKey(c), f: () => drawCatWorld(c) });
-  if(fondoPC()) agregarMuebles(items);   // PC: rascador, repisas y cama colgante dibujados
+  if(fondoImg()) agregarMuebles(items);   // rascador, repisas y cama colgante dibujados
   else items.push({ k: tree.y, f: drawTree });
   items.push({ k: box.y - .6, f: drawBoxBack }, { k: box.y + .6, f: drawBoxFront });
-  if(!fondoPC()) items.push({ k: bed.y - 3, f: drawBed }, { k: bed.y + 3, f: drawBedFront });
+  if(!fondoImg()) items.push({ k: bed.y - 3, f: drawBed }, { k: bed.y + 3, f: drawBedFront });
   for(const b of bowls) items.push({ k: b.y, f: () => drawBowl(b) });
   items.push({ k: ball.y, f: drawBall });
   for(const t of treats) items.push({ k: t.y, f: () => drawTreat(t) });

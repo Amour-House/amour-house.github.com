@@ -4,7 +4,9 @@ const tree = { x:0, y:0 };
 const box = { x:0, y:0 };
 const bed = { x:0, y:0 };
 const ball = { x:0, y:0, vx:0, vy:0, rot:0 };
-const bowls = [ {kind:'food', food:1, fx:.33, fy:.8, user:null}, {kind:'food', food:1, fx:.41, fy:.86, user:null}, {kind:'water', food:1, fx:.49, fy:.8, user:null} ];
+// en celular los platos van en estas posiciones (en PC van donde están dibujados)
+const bowls = [ {kind:'food', food:1, fx:.2, fy:.84, user:null}, {kind:'food', food:1, fx:.4, fy:.88, user:null},
+                {kind:'water', food:1, fx:.6, fy:.84, user:null}, {kind:'water', food:1, fx:.8, fy:.88, user:null} ];
 const spots = [
   {kind:'tree', id:'t1', occ:null}, {kind:'tree', id:'t2', occ:null}, {kind:'tree', id:'t3', occ:null, off:true},
   {kind:'shelf', id:'s1', occ:null, fx:.2, zz:150}, {kind:'shelf', id:'s2', occ:null, fx:.6, zz:215},
@@ -41,7 +43,7 @@ function layout(){
   Object.assign(spotById('bed'), {x:bed.x, y:bed.y, z:6*G*depth(bed.y), ay:bed.y, appr:0});
   for(const b of bowls){ b.x = W*b.fx; b.y = fy(b.fy); b.off = false; }
   spotById('t3').off = true;
-  if(fp) colocarMueblesPC(fp);
+  if(fondoImg()) colocarMuebles();
   if(firstLayout){ ball.x = W*.56; ball.y = fy(.6); }
   ball.x = clampX(ball.x); ball.y = clampY(ball.y);
 
@@ -53,52 +55,84 @@ function layout(){
   drawBackground();
 }
 
-/* Fondo dibujado (solo PC). En celular se sigue usando el fondo hecho con código.
+/* Fondo dibujado (Imagenes/Fondo.png). Si no carga, se usa el fondo hecho con código.
    Se ajusta para cubrir toda la pantalla, recortando un poco los bordes si hace falta. */
 const FONDO_PC = new Image();
 const ANCHO_MIN_PC = 761;              // desde este ancho se considera PC (igual que el panel)
 FONDO_PC.onload = () => { if(W) layout(); };
 
-/* En PC, los lugares para subirse y los platos van donde están dibujados.
-   Los números son píxeles del lienzo de 1920x1080:
-   [x, altura donde se para el gato, altura del suelo debajo] */
+/* Lugares para subirse, en píxeles del lienzo de 1920x1080:
+   [grupo del mueble, x, altura donde se para el gato, altura del suelo debajo] */
 const LUGARES_PC = {
-  t1:  [80, 458, 632],    // rascador: plataforma izquierda
-  t2:  [150, 354, 632],   // rascador: plataforma de arriba
-  t3:  [226, 518, 632],   // rascador: plataforma derecha
-  s1:  [1067, 266, 552],  // reposadera 1
-  s2:  [1660, 365, 552],  // reposadera 2
-  bed: [576, 388, 565],   // amarra (cama colgante): el gato se para en la parte rosada
+  t1:  ['rascador', 80, 458, 632],    // rascador: plataforma izquierda
+  t2:  ['rascador', 150, 354, 632],   // rascador: plataforma de arriba
+  t3:  ['rascador', 226, 518, 632],   // rascador: plataforma derecha
+  s1:  ['repisaIzq', 1067, 266, 552], // reposadera de la izquierda
+  s2:  ['repisaDer', 1660, 365, 552], // reposadera de la derecha
+  bed: ['amarra', 576, 388, 565],     // amarra (cama colgante): el gato se para en la parte rosada
 };
-function colocarMueblesPC(fp){
-  const P = (x, y) => [fp.x + x*fp.k, fp.y + y*fp.k];
+/* En celular la pantalla es vertical y no alcanza a mostrar todo el fondo,
+   así que cada mueble se pone en un lugar de la pantalla:
+   ancla: punto del mueble (en el lienzo 1920x1080) que se usa para ubicarlo
+   x:     posición horizontal (0 = borde izquierdo, 1 = borde derecho)
+   piso:  dónde queda su base: 'muro' (pegado a la pared) o un número
+          (0 = donde empieza el piso, 1 = abajo del todo) */
+const MUEBLES_CEL = {
+  escala: .75,                                            // tamaño de los muebles (respecto a los gatos)
+  rascador:  { ancla:[155, 632],  x:.16, piso:.2 },
+  repisaIzq: { ancla:[1067, 552], x:.4,  piso:'muro' },
+  amarra:    { ancla:[576, 565],  x:.62, piso:'muro' },
+  repisaDer: { ancla:[1660, 552], x:.86, piso:'muro' },
+};
+const LINEA_MURO = 548;   // altura (en el lienzo) donde termina la pared y empieza el piso
+
+// cómo se pasa de píxeles del lienzo a la pantalla para cada mueble
+function transformarMueble(grupo){
+  const fp = fondoPC(); if(fp) return { ox:fp.x, oy:fp.y, s:fp.k };
+  const fi = fondoImg(), M = MUEBLES_CEL[grupo]; if(!fi || !M) return null;
+  const s = G*MUEBLES_CEL.escala;
+  const muro = fi.y + LINEA_MURO*fi.k;
+  const sx = W*M.x, sy = M.piso === 'muro' ? muro + 2 : floorTop + (floorBot - floorTop)*M.piso;
+  return { ox:sx - M.ancla[0]*s, oy:sy - M.ancla[1]*s, s };
+}
+function colocarMuebles(){
   for(const id in LUGARES_PC){
-    let [x, yPie, ySuelo] = LUGARES_PC[id]; const s = spotById(id);
-    if(id === 'bed') yPie = AMARRA.pivote[1] + (yPie - AMARRA.pivote[1])*AMARRA.escala;   // la cama colgante está agrandada
-    const [px, py] = P(x, ySuelo);
-    Object.assign(s, { x:px, y:py, z:(ySuelo - yPie)*fp.k, ay:Math.max(py + 10*fp.k, walkTop + 8), appr:id === 'bed' ? 55 : 65, off:false });
+    let [grupo, x, yPie, ySuelo] = LUGARES_PC[id]; const s = spotById(id), T = transformarMueble(grupo);
+    if(!T) continue;
+    if(id === 'bed') yPie = AMARRA.pivote[1] + (yPie - AMARRA.pivote[1])*AMARRA.escala;   // por si la cama colgante está agrandada
+    const px = T.ox + x*T.s, py = T.oy + ySuelo*T.s;
+    Object.assign(s, { x:px, y:py, z:(ySuelo - yPie)*T.s, ay:clamp(py + 10*T.s, walkTop + 8, floorBot), appr:id === 'bed' ? 55 : 65, off:false });
   }
-  // platos: dos de comida y uno de agua (el segundo de comida va en PLATO.food.enFondo2)
-  let comidaUsada = false;
+  // platos (solo PC): dos de comida y dos de agua donde están dibujados
+  const fp = fondoPC(); if(!fp) return;
+  const P = (x, y) => [fp.x + x*fp.k, fp.y + y*fp.k];
+  // el primero de cada tipo va en enFondo y el segundo en enFondo2
+  const usados = { food:0, water:0 };
   for(const b of bowls){
-    const e = (b.kind === 'food' && comidaUsada) ? PLATO.food.enFondo2 : PLATO[b.kind].enFondo, [px, py] = P(e[0], e[1]);
+    const e = usados[b.kind]++ ? PLATO[b.kind].enFondo2 : PLATO[b.kind].enFondo, [px, py] = P(e[0], e[1]);
     b.x = px; b.y = py;
-    if(b.kind === 'food') comidaUsada = true;
   }
 }
 
-/* Si se está usando el fondo dibujado: escala y esquina donde queda la imagen */
-function fondoPC(){
-  if(!(W >= ANCHO_MIN_PC && FONDO_PC.complete && FONDO_PC.naturalWidth)) return null;
-  const k = Math.max(W / FONDO_PC.naturalWidth, H / FONDO_PC.naturalHeight);
-  return { k, x:(W - FONDO_PC.naturalWidth*k)/2, y:(H - FONDO_PC.naturalHeight*k)/2 };
+/* El fondo dibujado cubre toda la pantalla (en celular se ve la parte del centro).
+   fondoImg(): escala y esquina de la imagen, en PC y en celular.
+   fondoPC():  lo mismo, pero solo en PC (ahí los muebles van donde están dibujados). */
+const CENTRO_FONDO_CEL = 1150;   // en celular: qué parte del fondo se ve (x del lienzo que queda al centro)
+function fondoImg(){
+  if(!(FONDO_PC.complete && FONDO_PC.naturalWidth)) return null;
+  const iw = FONDO_PC.naturalWidth, ih = FONDO_PC.naturalHeight;
+  const k = Math.max(W / iw, H / ih);
+  let x = (W - iw*k)/2;
+  if(W < ANCHO_MIN_PC) x = clamp(W/2 - CENTRO_FONDO_CEL*k, W - iw*k, 0);
+  return { k, x, y:(H - ih*k)/2 };
 }
+function fondoPC(){ return W >= ANCHO_MIN_PC ? fondoImg() : null; }
 FONDO_PC.src = 'Imagenes/Fondo.png';
 
 function drawBackground(){
   bgC.width = W*DPR; bgC.height = H*DPR;
   const b = bctx; b.setTransform(DPR,0,0,DPR,0,0);
-  const fp = fondoPC();
+  const fp = fondoImg();
   if(fp){
     b.drawImage(FONDO_PC, fp.x, fp.y, FONDO_PC.naturalWidth*fp.k, FONDO_PC.naturalHeight*fp.k);
     return;

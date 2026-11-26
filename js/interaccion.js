@@ -64,7 +64,7 @@ function openCard(c){
 }
 function stateText(c){
   const t = c.task; if(!t) return 'Pensando...';
-  const where = c.spot ? ({tree:' en el árbol', shelf:' en la repisa', box:' en la caja', bed:(fondoPC() ? ' en la cama colgante' : ' en su camita')})[c.spot.kind] : '';
+  const where = c.spot ? ({tree:' en el árbol', shelf:' en la repisa', box:' en la caja', bed:(fondoImg() ? ' en la cama colgante' : ' en su camita')})[c.spot.kind] : '';
   switch(t.type){
     case 'idle': return (t.pose === 'loaf' ? 'Haciendo de pancito' : t.pose === 'stand' ? 'Mirando alrededor' : t.pose === 'happy' ? 'Feliz' : 'Sentado, contemplando') + where;
     case 'move': return t.run ? 'Corriendo' : 'Paseando';

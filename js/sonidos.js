@@ -6,7 +6,7 @@
    Los navegadores no dejan sonar nada hasta que la persona toca la página,
    así que todo empieza a sonar con el primer clic o toque. */
 
-const MUSICA = { archivo:'Sounds/Cats.mp3', volumen:.18 };
+const MUSICA = { archivo:'Sounds/Cats.mp3', volumenMax:.45, barritaInicial:40 };   // barrita 100 = volumenMax
 const VOLUMEN_GATOS = .6;
 const PROB_EASTER_EGG = 1/100;
 const PAUSA_ENTRE_SONIDOS = .5;   // segundos mínimos entre sonidos de gatos (para que no se encimen)
@@ -20,25 +20,40 @@ const SONIDOS_GATOS = {
 
 /* ── Canción de fondo ── */
 const musica = new Audio(MUSICA.archivo);
-musica.loop = true; musica.volume = MUSICA.volumen;
-let musicaSilenciada = false;
-try { musicaSilenciada = localStorage.getItem('amourhouse_musica_off') === '1'; } catch(e){}
+musica.loop = true;
+let musicaSilenciada = false, barrita = MUSICA.barritaInicial;   // barrita: 0 a 100
+try {
+  musicaSilenciada = localStorage.getItem('amourhouse_musica_off') === '1';
+  const v = localStorage.getItem('amourhouse_volumen'); if(v !== null && !isNaN(+v)) barrita = +v;
+} catch(e){}
 let audioDesbloqueado = false;
 
+function guardarVolumen(){
+  try { localStorage.setItem('amourhouse_musica_off', musicaSilenciada ? '1' : '0'); localStorage.setItem('amourhouse_volumen', String(barrita)); } catch(e){}
+}
 function actualizarBotonMusica(){
-  const b = document.getElementById('btnMusica'); if(!b) return;
-  b.textContent = musicaSilenciada ? '🔇' : '🔊';
-  b.title = musicaSilenciada ? 'Activar la música' : 'Silenciar la música';
-  b.setAttribute('aria-label', b.title);
+  const b = document.getElementById('btnMusica'), r = document.getElementById('volMusica');
+  const callado = musicaSilenciada || barrita === 0;
+  if(b){
+    b.textContent = callado ? '🔇' : barrita < 50 ? '🔉' : '🔊';
+    b.title = callado ? 'Activar la música' : 'Silenciar la música';
+    b.setAttribute('aria-label', b.title);
+  }
+  if(r){ const v = musicaSilenciada ? 0 : barrita; r.value = v; r.style.setProperty('--lleno', v + '%'); }
 }
 function aplicarMusica(){
-  if(musicaSilenciada || !audioDesbloqueado) musica.pause();
+  musica.volume = MUSICA.volumenMax * barrita/100;
+  if(musicaSilenciada || barrita === 0 || !audioDesbloqueado) musica.pause();
   else musica.play().catch(() => {});
 }
 function alternarMusica(){
-  musicaSilenciada = !musicaSilenciada;
-  try { localStorage.setItem('amourhouse_musica_off', musicaSilenciada ? '1' : '0'); } catch(e){}
-  actualizarBotonMusica(); aplicarMusica();
+  if(musicaSilenciada || barrita === 0){ musicaSilenciada = false; if(barrita === 0) barrita = MUSICA.barritaInicial; }
+  else musicaSilenciada = true;
+  guardarVolumen(); actualizarBotonMusica(); aplicarMusica();
+}
+function cambiarVolumen(v){
+  barrita = Math.round(v); musicaSilenciada = false;
+  guardarVolumen(); actualizarBotonMusica(); aplicarMusica();
 }
 // el primer clic/toque en la página "desbloquea" el audio
 function desbloquearAudio(){
@@ -48,8 +63,13 @@ function desbloquearAudio(){
 window.addEventListener('pointerdown', desbloquearAudio, true);
 window.addEventListener('keydown', desbloquearAudio, true);
 document.addEventListener('DOMContentLoaded', () => {
-  const b = document.getElementById('btnMusica');
-  if(b){ b.addEventListener('click', e => { e.stopPropagation(); alternarMusica(); }); actualizarBotonMusica(); }
+  const b = document.getElementById('btnMusica'), r = document.getElementById('volMusica');
+  if(b) b.addEventListener('click', e => { e.stopPropagation(); alternarMusica(); });
+  if(r){
+    r.addEventListener('input', () => { desbloquearAudio(); cambiarVolumen(+r.value); });
+    r.addEventListener('pointerdown', e => e.stopPropagation());
+  }
+  actualizarBotonMusica(); musica.volume = MUSICA.volumenMax * barrita/100;
 });
 
 /* ── Sonidos de los gatos ── */
