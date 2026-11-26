@@ -4,8 +4,9 @@
    Cuando se le acaban, "piensa" qué hacer según su hambre, su
    energía y su personalidad. */
 const cats = CAT_DEFS.map(makeCat);
+const MIAU_SUELTO = .12;   // probabilidad por segundo de que un gato quieto maúlle (más alto = más miaus)
 const NEED_GROUND = new Set(['move','chase','flee','ball','laser','treat','zoom','pounceTo']);
-const BUSY = new Set(['jump','wrestle','crouch','pet','hop']);
+const BUSY = new Set(['jump','wrestle','crouch','pet','hop','erizado']);
 
 function addP(o){ parts.push(Object.assign({ life:1, max:1, vx:0, vy:0 }, o)); }
 function dust(x, y, n){ for(let i=0;i<(n||1);i++) addP({type:'dust', x:x+rand(-6,6), y, vx:rand(-25,25), vy:rand(-18,-4), life:.5, max:.5, r:rand(3,6)*G}); }
@@ -16,6 +17,7 @@ function releaseRes(c){
   if(c.bowl){ if(c.bowl.user===c) c.bowl.user = null; c.bowl = null; }
 }
 function endTask(c){
+  pararRonroneo(c);
   if(c.task && c.task.type==='wrestle') c.hidden = false;
   c.task = null;
 }
@@ -34,6 +36,10 @@ function setTasks(c, list, mantener){
 }
 function interruptible(o){ return o.task && !o.hidden && !BUSY.has(o.task.type); }
 function freeForPlay(o, c){ return o!==c && !o.hidden && !o.spot && o.task && ['idle','move','groom','stretch','meow'].includes(o.task.type); }
+// probabilidades de las actividades entre gatos (más alto = más seguido)
+const PROB_CARINO = 1.6;      // juntarse a hacer corazoncitos
+const PROB_PERSEGUIR = .2;    // perseguir (puede terminar en enfrentamiento)
+const PROB_SALTAR_ENCIMA = .12;
 function fleeing(o){ return (o.task && o.task.type==='flee') || o.tasks.some(t => t.type==='flee'); }
 function freeSpot(kinds){ const l = spots.filter(s => kinds.includes(s.kind) && !s.occ && !s.off); return l.length ? pick(l) : null; }
 function freeBowl(kind, c){
@@ -63,7 +69,7 @@ function plan(c){
   const p = c.def.p;
   if(c.spot){
     const w = [['stay',2], ['sleep',1.4*p.sleepy + (c.spot.kind==='bed'?2.5:0)], ['groom',.8], ['leave',1.8]];
-    if(hayTicket('maullar')) w.push(['meow',.35*p.vocal]);
+    if(hayTicket('maullar')) w.push(['meow',2*p.vocal]);
     switch(weighted(w)){
       case 'stay':  c.tasks = [{type:'idle', dur:rand(3,8), pose:pick(['sit','loaf','loaf'])}]; break;
       case 'sleep': c.tasks = [{type:'sleep', dur:rand(10,22)}]; break;
@@ -81,15 +87,15 @@ function plan(c){
     ['sleep', .7*p.sleepy]
   ];
   // actividades con ticket: solo se ofrecen si queda cupo
-  if(hayTicket('maullar')) opts.push(['meow', .35*p.vocal]);
+  if(hayTicket('maullar')) opts.push(['meow', 2.2*p.vocal]);   // maúllan seguido (antes .35)
   if(hayTicket('pelota'))  opts.push(['ball', .55*p.playful]);
   if(hayTicket('zoomies')) opts.push(['zoom', .1*p.playful]);
   if(food) opts.push(['eat', .8*p.hunger]);
   if(water) opts.push(['drink', .3]);
   if(treat) opts.push(['treat', 3]);
   if(others.length){
-    opts.push(['sniff', .45*p.social]);
-    if(hayTicket('jugar', null, 2)) opts.push(['chase', .7*p.playful*p.social], ['pounce', .45*p.playful]);
+    opts.push(['sniff', PROB_CARINO*p.social]);
+    if(hayTicket('jugar', null, 2)) opts.push(['chase', PROB_PERSEGUIR*p.playful*p.social], ['pounce', PROB_SALTAR_ENCIMA*p.playful]);
   }
   if(freeSpot(['tree','shelf'])) opts.push(['climb', (.5*p.energy + .2)*(c.def.climber ? 2.5 : 1)]);
   if(freeSpot(['box'])) opts.push(['box', .35]);
@@ -129,7 +135,7 @@ function plan(c){
       break; }
     case 'sniff': {
       const o = pick(others), side = c.x < o.x ? 1 : -1;
-      c.tasks = [{type:'move', x:clampX(o.x - side*(c.geo.L*.5 + o.geo.L*.5 + c.geo.hr*1.2)*k), y:o.y}, {type:'sniffAt', target:o, dur:1.8}];
+      c.tasks = [{type:'move', x:clampX(o.x - side*(c.geo.L*.5 + o.geo.L*.5 + c.geo.hr*1.2)*k), y:o.y}, {type:'sniffAt', target:o, dur:rand(3,4.5)}, {type:'idle', pose:'sit', dur:rand(1,2)}];
       break; }
     case 'ball': c.tasks = [{type:'ball', n:randi(2,4)}]; tomarTicket(c, 'pelota'); break;
     case 'zoom': c.tasks = [{type:'zoom'}, {type:'idle', dur:rand(1,2), pose:'loaf'}]; tomarTicket(c, 'zoomies'); break;
@@ -139,11 +145,16 @@ function plan(c){
   if(!c.tasks.length) c.tasks = [{type:'idle', dur:2, pose:'sit'}];
 }
 
+/* Enfrentamiento: los dos gatos quedan frente a frente, erizados,
+   y hacen su sonido de molestos al mismo tiempo. Después uno se va. */
 function startWrestle(a, b){
-  const cl = { x:(a.x+b.x)/2, y:Math.max(a.y,b.y), t:0, dur:1.9, a, b };
-  clouds.push(cl);
-  setTasks(a, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'stand', dur:.6}, {type:'groom', dur:2}], true);
-  setTasks(b, [{type:'wrestle', cloud:cl}, {type:'hop'}, {type:'idle', pose:'sit', dur:1.2}], true);
+  const k = escalaGato(), dist = (a.geo.L*.5 + b.geo.L*.5 + a.geo.hr*1.6)*k*1.9;   // distancia entre los dos
+  const lado = a.x <= b.x ? -1 : 1;                       // a queda a la izquierda o derecha de b
+  a.x = clampX(b.x + lado*dist); a.y = b.y;
+  const dur = rand(2.2, 3);
+  setTasks(a, [{type:'erizado', target:b, dur}, {type:'idle', pose:'stand', dur:.4}, {type:'move', x:clampX(a.x + lado*rand(120,200)*G), y:clampY(a.y + rand(-30,30)*G)}, {type:'groom', dur:2}], true);
+  setTasks(b, [{type:'erizado', target:a, dur}, {type:'idle', pose:'sit', dur:1.2}, {type:'groom', dur:1.5}], true);
+  sonidoEnojo(a, true); sonidoEnojo(b, true);
 }
 
 function startTask(c, t){
@@ -161,8 +172,9 @@ function startTask(c, t){
       };
       initJump(c, t); break; }
     case 'jump': initJump(c, t); break;
-    case 'meow': break;
-    case 'pet': break;
+    case 'meow': if(t.enojo) sonidoEnojo(c); else sonidoMiau(c); break;
+    case 'pet': empezarRonroneo(c); break;
+    case 'flee': if(R() < .5) sonidoEnojo(c); break;
     case 'hop': t.z0 = c.z; break;
     case 'eat': case 'drink': c.dir = t.dir; break;
     case 'occupy': c.spot = t.spot; t.spot.occ = c; c.reserved = null; c.z = t.spot.z; c.x = t.spot.x; c.y = t.spot.y; break;
@@ -170,8 +182,10 @@ function startTask(c, t){
     case 'wrestle': c.hidden = true; c.x = t.cloud.x + (c===t.cloud.a ? -14 : 14)*G; c.y = t.cloud.y; c.z = 0; break;
     case 'sniffAt': {
       const o = t.target;
-      if(freeForPlay(o, c)){ setTasks(o, [{type:'idle', pose:'stand', dur:2.2, face:c}]); }
+      // se juntan a hacerse cariño: los dos se miran y salen corazoncitos
+      if(freeForPlay(o, c)) setTasks(o, [{type:'carino', target:c, dur:t.dur}, {type:'idle', pose:'sit', dur:rand(1,2)}]);
       c.dir = o.x > c.x ? 1 : -1;
+      empezarRonroneo(c, .45);
       break; }
     case 'ball': t.sub = 'go'; break;
     case 'treat': break;
@@ -283,9 +297,22 @@ function runTask(c, t, dt){
       c.pose = 'sit';
       if(c.taskT > t.cloud.dur){ c.hidden = false; c.x = clampX(t.cloud.x + (c===t.cloud.a ? -26 : 26)*G); c.dir = c===t.cloud.a ? -1 : 1; return true; }
       return false;
-    case 'sniffAt':
-      c.pose = 'stand';
-      if(!t.heart && c.taskT > .9){ t.heart = true; const o = t.target, k = escalaGato(); addP({type:'heart', x:(c.hx + o.hx)/2, y:Math.min(c.hy, o.hy) - 10*k, vx:0, vy:-30, life:1.3, max:1.3, s:k}); }
+    case 'sniffAt': {
+      // cariño: el que se acercó lanza corazoncitos entre los dos
+      const o = t.target, k = escalaGato();
+      c.pose = c.taskT > .6 ? 'happy' : 'stand';
+      c.dir = o.x > c.x ? 1 : -1;
+      t.h = (t.h || 0) + dt;
+      if(c.taskT > .5 && t.h > .45){ t.h = 0; addP({type:'heart', x:(c.hx + o.hx)/2 + rand(-10,10)*k, y:Math.min(c.hy, o.hy) - 10*k, vx:rand(-12,12), vy:-32, life:1.4, max:1.4, s:k*rand(.8,1.15)}); }
+      return c.taskT > t.dur;
+    }
+    case 'carino':
+      c.pose = c.taskT > .6 ? 'happy' : 'stand';
+      c.dir = t.target.x > c.x ? 1 : -1;
+      return c.taskT > t.dur;
+    case 'erizado':
+      c.pose = 'erizado';
+      c.dir = t.target.x > c.x ? 1 : -1;
       return c.taskT > t.dur;
     case 'ball': {
       if(c.taskT > 14) return true;
@@ -327,7 +354,7 @@ function runTask(c, t, dt){
     }
     case 'treat': {
       const tr = t.treat;
-      if(tr.eaten){ c.tasks.unshift({type:'meow', text:pick(['¿Y el mío?','Hmph.','¡Injusto!'])}); return true; }
+      if(tr.eaten){ c.tasks.unshift({type:'meow', enojo:true}); return true; }   // otro se comió su premio
       const k = escalaGato(), side = c.x < tr.x ? 1 : -1;
       const tx = tr.x - side*(c.geo.L*.5 + c.geo.hr*.55)*k, ty = tr.y - 2;
       c.pose = 'run';
@@ -377,6 +404,12 @@ function updateCat(c, dt){
     if(t.type==='eat' && c.bowl) comerDelPlato(c.bowl);
     if((t.type==='eat' || t.type==='drink') && c.bowl){ if(c.bowl.user === c) c.bowl.user = null; c.bowl = null; }
     if(t.type==='wrestle') c.hidden = false;
+    if(t.type==='pet' || t.type==='sniffAt') pararRonroneo(c);
+    c.task = null;
+  }
+  // miau suelto: un gato sentado o mirando a veces maúlla y sigue en lo suyo
+  if(c.task && c.task.type === 'idle' && !c.task.face && R() < dt*MIAU_SUELTO && hayTicket('maullar')){
+    c.tasks.unshift({type:'meow'}, {type:'idle', pose:c.task.pose, dur:Math.max(.5, c.task.dur - c.taskT)});
     c.task = null;
   }
   if(c.spot && (!c.task || c.task.type !== 'jump')){ c.x = c.spot.x; c.y = c.spot.y; c.z = c.spot.z; }

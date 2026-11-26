@@ -78,11 +78,10 @@ function colocarMueblesPC(fp){
     const [px, py] = P(x, ySuelo);
     Object.assign(s, { x:px, y:py, z:(ySuelo - yPie)*fp.k, ay:Math.max(py + 10*fp.k, walkTop + 8), appr:id === 'bed' ? 55 : 65, off:false });
   }
-  // platos: uno de comida y uno de agua, donde están dibujados (el segundo de comida no se usa)
+  // platos: dos de comida y uno de agua (el segundo de comida va en PLATO.food.enFondo2)
   let comidaUsada = false;
   for(const b of bowls){
-    if(b.kind === 'food' && comidaUsada){ b.off = true; continue; }
-    const e = PLATO[b.kind].enFondo, [px, py] = P(e[0], e[1]);
+    const e = (b.kind === 'food' && comidaUsada) ? PLATO.food.enFondo2 : PLATO[b.kind].enFondo, [px, py] = P(e[0], e[1]);
     b.x = px; b.y = py;
     if(b.kind === 'food') comidaUsada = true;
   }

@@ -20,7 +20,7 @@
    Tecla D: muestra/oculta los puntos de unión (para revisar).
    ========================================================= */
 
-const POSE_DE_PIE = { sit:'stand', meow:'stand', happy:'stand', groom:'stand', loaf:'lie', sleep:'lie' };
+const POSE_DE_PIE = { sit:'stand', meow:'stand', happy:'stand', groom:'stand', loaf:'lie', sleep:'lie', erizado:'stand' };
 let verPuntos = false;
 window.addEventListener('keydown', e => { if(e.key === 'd' || e.key === 'D') verPuntos = !verPuntos; });
 

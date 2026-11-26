@@ -73,11 +73,12 @@ function stateText(c){
     case 'groom': return 'Acicalándose' + where; case 'stretch': return 'Estirándose';
     case 'meow': return 'Maullando' + where; case 'pet': return 'Ronroneando ❤';
     case 'chase': return 'Persiguiendo a ' + t.target.def.name; case 'flee': return 'Huyendo de ' + t.from.def.name;
-    case 'wrestle': return '¡Pelea de juego!'; case 'ball': return 'Jugando con la pelota';
+    case 'wrestle': return '¡Pelea de juego!'; case 'erizado': return 'Erizado frente a ' + t.target.def.name + ' 😾';
+    case 'carino': return 'Haciéndose cariño con ' + t.target.def.name + ' 💕'; case 'ball': return 'Jugando con la pelota';
     case 'laser': return 'Cazando el láser'; case 'treat': return 'Yendo por un premio';
     case 'zoom': return '¡ZOOMIES!'; case 'jump': return 'Saltando'; case 'crouch': return 'Preparando el salto';
     case 'esperar': return 'Esperando su turno' + (t.act === 'laser' ? ' para el láser' : t.act === 'pelota' ? ' para la pelota' : '');
-    case 'hop': return '¡Sorpresa!'; case 'sniffAt': return 'Saludando a ' + t.target.def.name;
+    case 'hop': return '¡Sorpresa!'; case 'sniffAt': return 'Haciéndose cariño con ' + t.target.def.name + ' 💕';
   }
   return 'Haciendo cosas de gato';
 }
@@ -111,7 +112,7 @@ cv.addEventListener('pointerdown', e => {
   if(tool === 'pet'){
     const c = hitCat(x, y);
     if(c){
-      if(!c.task || !['jump','wrestle'].includes(c.task.type)) setTasks(c, [{type:'pet', dur:2.4}]);
+      if(!c.task || !['jump','wrestle','erizado'].includes(c.task.type)) setTasks(c, [{type:'pet', dur:2.4}]);
       return;
     }
   }

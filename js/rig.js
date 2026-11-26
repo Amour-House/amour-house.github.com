@@ -26,7 +26,8 @@ const RAD = Math.PI/180;
 const ANIM_DE_POSE = {
   stand:'quieto', walk:'caminar', run:'correr', eat:'comer', stretch:'estirarse',
   crouch:'agacharse', bat:'manotazo', jump:'saltar', hop:'brinco', loaf:'echado',
-  lie:'echado', sleep:'dormir', sit:'sentado', meow:'maullar', happy:'feliz', groom:'acicalarse'
+  lie:'echado', sleep:'dormir', sit:'sentado', meow:'maullar', happy:'feliz', groom:'acicalarse',
+  erizado:'erizado'
 };
 const ANIM_INFO = [
   ['quieto','Quieto (de pie)'], ['caminar','Caminar'], ['correr','Correr'], ['comer','Comer / tomar agua'],

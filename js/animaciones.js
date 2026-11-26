@@ -99,6 +99,20 @@ const ANIMACIONES = {
     "ojos": [{"t":0,"v":"cerrados"}],
     "boca": [{"t":0,"v":"abierta"}]
   }},
+  "erizado": { "duracion": 0.3, "loop": true, "pistas": {
+    "raiz": [{"t":0,"v":{"x":0,"y":-2,"rot":0}},{"t":0.075,"v":{"x":0.6,"y":-2,"rot":0}},{"t":0.15,"v":{"x":0,"y":-2,"rot":0}},{"t":0.225,"v":{"x":-0.6,"y":-2,"rot":0}}],
+    "cuerpo": [{"t":0,"v":{"x":0,"y":-3,"rot":-4}}],
+    "cabeza": [{"t":0,"v":{"x":-1,"y":3,"rot":10}}],
+    "cola": [{"t":0,"v":{"rot":38}},{"t":0.15,"v":{"rot":42}}],
+    "pataDC": [{"t":0,"v":{"rot":-8,"esc":1}}],
+    "pataDL": [{"t":0,"v":{"rot":-8,"esc":1}}],
+    "pataTC": [{"t":0,"v":{"rot":8,"esc":1}}],
+    "pataTL": [{"t":0,"v":{"rot":8,"esc":1}}],
+    "orejaA": [{"t":0,"v":{"rot":-28}}],
+    "orejaB": [{"t":0,"v":{"rot":-28}}],
+    "ojos": [{"t":0,"v":"abiertos"}],
+    "boca": [{"t":0,"v":"abierta"}]
+  }},
   "agacharse": { "duracion": 0.26, "loop": true, "pistas": {
     "raiz": [{"t":0,"v":{"x":0,"y":4,"rot":0}},{"t":0.07,"v":{"x":1.5,"y":4,"rot":0}},{"t":0.13,"v":{"x":0,"y":4,"rot":0}},{"t":0.2,"v":{"x":-1.5,"y":4,"rot":0}}],
     "cabeza": [{"t":0,"v":{"x":2,"y":2,"rot":8}}],

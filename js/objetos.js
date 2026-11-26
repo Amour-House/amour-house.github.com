@@ -13,7 +13,8 @@ const PLATO = {
   porComida:.5,                    // cuánto se come un gato cada vez (1 = el plato entero)
   rellenar:25,                     // segundos que el plato queda vacío antes de rellenarse
   food:  { lleno:'Imagenes/BowlFood.png', vacio:'Imagenes/BowlEmpty.png',
-           recorte:[1217, 796, 142, 95], base:[71, 90], enFondo:[1288, 886] },
+           recorte:[1217, 796, 142, 95], base:[71, 90], enFondo:[1288, 886],
+           enFondo2:[1135, 872] },   // dónde va el segundo plato de comida en PC
   water: { lleno:'Imagenes/Agua.png',
            recorte:[450, 806, 142, 62],  base:[70, 57], enFondo:[520, 863] },
 };
